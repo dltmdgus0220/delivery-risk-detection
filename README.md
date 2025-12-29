@@ -48,10 +48,10 @@
 ├── .gitignore
 ├── README.md                  
 ├── requirements.txt           # Python 의존성 목록
-├── src/
+├── data/                      # 원본 데이터 파일
+└── src/
     ├── data_collection.py
     └── data_merge.py
-└── data/                      # 원본 데이터 파일
 
 ```
 
