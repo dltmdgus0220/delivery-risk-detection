@@ -14,3 +14,38 @@ APP_ID = PACKAGE_LIST[PACKAGE_NUM]
 APP_NAME_KOR = PACKAGE_NAME_KOR[PACKAGE_NUM]
 APP_NAME_ENG = PACKAGE_NAME_ENG[PACKAGE_NUM]
 
+
+# --- 1. 데이터 수집 ---
+
+all_reviews = []
+token = None
+seen = set()
+
+while True: # 한번의 호출가능한 수가 한정되어있으므로 반복해야함. count=10,000이라고해서 10,000개 가져오는거 아님.
+    batch, token = reviews(
+        APP_ID,
+        lang="ko", # 언어
+        country="kr", # 국가
+        count=200,
+        sort=Sort.NEWEST,
+        continuation_token=token
+    )
+    # 중복 제거 (수집 중 리뷰가 추가되어 중복된 리뷰가 들어갈 수 있음)
+    add = 0 # 추가 여부 확인
+    for r in batch:
+        rid = r.get("reviewId")
+        if rid not in seen:
+            seen.add(rid)
+            all_reviews.append(r)
+            add += 1
+    if add == 0:
+        break
+    
+    if len(all_reviews) >= NUM_DATA:
+        all_reviews = all_reviews[:NUM_DATA]
+        break
+
+    time.sleep(0.5) # 너무 빠르게 호출하면 에러 발생할 수 있음.
+
+print("수집한 리뷰 수:", len(all_reviews))
+
