@@ -71,6 +71,12 @@ conditions = [
 df['sentiment_label'] = np.select(conditions, [1, 0, -1], default=99)
 df['sentiment'] = np.select(conditions, ['positive', 'neutral', 'negative'], default='unknown')
 
+# 결측치 처리
+# userName 결측치 처리
+df.loc[df['userName'].isna(), 'userName'] = "Google 사용자"
+# 리뷰텍스트 결측치 처리
+df = df.dropna(subset=['content'])
+
 
 # --- 3. csv 파일 저장 ---
 
