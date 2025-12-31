@@ -87,3 +87,4 @@ df[columns].to_csv(
     encoding="utf-8-sig", # utf-8-sig: 윈도우+엑셀에서 한글 깨짐 방지
     escapechar="\\" # 이스케이프 문자 지정
     ) 
+print("최종 리뷰 수:", len(df))
