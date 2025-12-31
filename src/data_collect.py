@@ -2,6 +2,7 @@ from google_play_scraper import reviews, Sort
 import time
 import pandas as pd
 import numpy as np
+from tqdm import tqdm
 
 # --- 0. 상수선언 ---
 
@@ -16,6 +17,7 @@ NUM_DATA = 100000
 all_reviews = []
 token = None
 seen = set()
+pbar = tqdm(total=NUM_DATA, desc="리뷰 수집", unit="건")
 
 while True: # 한번의 호출가능한 수가 한정되어있으므로 반복해야함. count=10,000이라고해서 10,000개 가져오는거 아님.
     batch, token = reviews(
@@ -26,6 +28,7 @@ while True: # 한번의 호출가능한 수가 한정되어있으므로 반복�
         sort=Sort.NEWEST,
         continuation_token=token
     )
+
     # 중복 제거 (수집 중 리뷰가 추가되어 중복된 리뷰가 들어갈 수 있음)
     add = 0 # 추가 여부 확인
     for r in batch:
@@ -34,6 +37,11 @@ while True: # 한번의 호출가능한 수가 한정되어있으므로 반복�
             seen.add(rid)
             all_reviews.append(r)
             add += 1
+
+    # 진행바 업데이트 + 상태 표시
+    pbar.update(add)
+    pbar.set_postfix(batch=len(batch), added=add, unique=len(seen))
+
     if add == 0:
         break
     
