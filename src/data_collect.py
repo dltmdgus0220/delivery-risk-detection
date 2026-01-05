@@ -81,6 +81,8 @@ df = df.dropna(subset=['content'])
 # --- 3. csv 파일 저장 ---
 
 columns = ['app', 'platform', 'reviewId', 'userName', 'content', 'score', 'thumbsUpCount', 'at', 'sentiment_label', 'sentiment']
+df['content'] = df["content"].astype(str).str.replace("\x00", "", regex=False) # Null 문자 제거
+
 df[columns].to_csv(
     f'data/{APP_NAME_ENG}_reviews_playstore_{NUM_DATA}.csv',
     index=False,
