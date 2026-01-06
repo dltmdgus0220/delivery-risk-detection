@@ -82,3 +82,52 @@ def main():
             "없음=이탈 의도 없음, 약함=불만은 있으나 이탈이 명시적이지 않음, 강함=이탈/삭제/갈아타기 의도가 명시적임."
         ),
     )
+
+    args = p.parse_args()
+    labels = [x.strip() for x in args.labels.split(",") if x.strip()] # "없음,약함,강함" -> [없음, 약함, 강함]
+    
+    df = pd.read_csv(args.csv)
+    df = df.dropna(subset=[args.text_col]).copy()
+    df_sample = df.sample(n=min(args.n, len(df)), random_state=args.seed).reset_index(drop=True)
+
+    client = genai.Client()
+
+    out_labels, out_confs = [], []
+    batch_size = 50  # 한 번에 50개씩 묶어서 처리
+    
+    for i in range(0, len(df_sample), batch_size):
+        batch_texts = df_sample[args.text_col].iloc[i : i + batch_size].astype(str).tolist()
+        prompt = build_batch_prompt(batch_texts, args.task_name, labels, args.task_desc)
+        
+        print(f"[{i+1}/{len(df_sample)}] 배치 준비")
+        
+        try:
+            # retry 로직 포함
+            success = False
+            for attempt in range(3):
+                try:
+                    resp = client.models.generate_content(model=args.model, contents=prompt)
+                    data = extract_json(resp.text)
+                    
+                    if isinstance(data, list) and len(data) == len(batch_texts): # 리스트가 맞는지, 보낸 텍스트 개수 == 받은 결과 개수
+                        for item in data:
+                            out_labels.append(item.get("label"))
+                            out_confs.append(item.get("confidence"))
+                        success = True
+                        break
+                except Exception as e:
+                    print(f"Attempt {attempt+1} failed: {e}")
+                    time.sleep(20)
+            
+            if not success:
+                # 실패 시 더미 데이터 삽입
+                out_labels.extend(["Error"] * len(batch_texts))
+                out_confs.extend([0.0] * len(batch_texts))
+
+            # 무료 버전일 경우 RPM 5를 넘기면 에러가 발생하므로 지연시간 필요
+            print("20초 대기")
+            time.sleep(20)
+
+        except Exception as e:
+            print(f"Critical Error at batch {i}: {e}")
+
