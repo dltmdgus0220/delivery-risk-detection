@@ -62,3 +62,23 @@ def extract_json(s: str) -> Any:
     json_str = s[start_idx : end_idx + 1]
     return json.loads(json_str)
 
+
+def main():
+    p = argparse.ArgumentParser(description="LLM(Gemini)로 CSV 일부 자동 라벨링 (단일 파일 최소 구현)")
+    p.add_argument("--csv", required=True, help="입력 CSV 경로")
+    p.add_argument("--text-col", default="content", help="텍스트 컬럼명")
+    p.add_argument("--out", required=True, help="저장 CSV 경로")
+    p.add_argument("--n", type=int, default=200, help="라벨링할 샘플 수")
+    p.add_argument("--seed", type=int, default=42, help="샘플링 시드")
+    p.add_argument("--model", default="gemini-2.5-flash", help="Gemini 모델명") # gemini-1.5-flash
+
+    # 태스크(기본: churn_intent)
+    p.add_argument("--task-name", default="churn_intent")
+    p.add_argument("--labels", default="없음,약함,강함", help="콤마 구분 라벨 목록") # 공백이 있으면 공백단위로 쪼개지기 때문에 쉼표단위로 쪼개기위해 공백은 없어야함.
+    p.add_argument(
+        "--task-desc",
+        default=(
+            "리뷰/문장에 '서비스를 떠날 의도(삭제, 탈퇴, 갈아타기, 다시는 안씀 등)'가 있는지 분류. "
+            "없음=이탈 의도 없음, 약함=불만은 있으나 이탈이 명시적이지 않음, 강함=이탈/삭제/갈아타기 의도가 명시적임."
+        ),
+    )
