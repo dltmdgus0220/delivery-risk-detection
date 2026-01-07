@@ -64,7 +64,7 @@ def extract_json(s: str) -> Any:
 
 
 def main():
-    p = argparse.ArgumentParser(description="LLM(Gemini)로 CSV 일부 자동 라벨링 (단일 파일 최소 구현)")
+    p = argparse.ArgumentParser(description="LLM(Gemini)로 CSV 일부 자동 라벨링")
     p.add_argument("--csv", required=True, help="입력 CSV 경로")
     p.add_argument("--text-col", default="content", help="텍스트 컬럼명")
     p.add_argument("--out", required=True, help="저장 CSV 경로")
