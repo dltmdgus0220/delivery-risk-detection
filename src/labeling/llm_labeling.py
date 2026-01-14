@@ -93,7 +93,6 @@ def main():
     p.add_argument("--seed", type=int, default=42, help="샘플링 시드")
     p.add_argument("--model", default="gemini-2.5-flash", help="Gemini 모델명") # gemini-1.5-flash
 
-
     args = p.parse_args()
     
     df = pd.read_csv(args.csv)
