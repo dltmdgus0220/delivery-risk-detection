@@ -102,7 +102,7 @@ def main():
 
     client = genai.Client() # $env:GEMINI_API_KEY='AIzaSy어쩌구'
 
-    out_churn_intent, out_churn_intent_label, out_churn_intent_confidence, out_reason, out_keywords = [], [], [], [], []
+    out_churn_intent, out_churn_intent_label, out_churn_intent_confidence, out_reason = [], [], [], []
     batch_size = args.batch # 200까지는 안정적
     
     start = time.time()
