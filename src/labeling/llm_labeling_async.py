@@ -150,3 +150,15 @@ async def main_async():
     client = genai.Client() # $env:GEMINI_API_KEY='AIzaSy어쩌구'
     semaphore = asyncio.Semaphore(args.parallel)
 
+    tasks = []
+    print(f"총 {len(df)}개 데이터를 {args.batch}개씩 비동기 처리 시작")
+
+    start_time = time.time()
+
+    # 배치 단위 태스크 생성
+    for i in range(0, len(df), args.batch):
+        batch_slice = df.iloc[i : i + args.batch]
+        batch_texts = batch_slice[args.text_col].astype(str).tolist()
+        batch_ratings = batch_slice[args.score_col].astype(int).tolist()
+        tasks.append(process_batch(client, args.model, batch_texts, batch_ratings, i//args.batch + 1, semaphore))
+
