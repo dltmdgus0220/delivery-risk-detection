@@ -102,3 +102,17 @@ def extract_json(s: str) -> Any:
     json_str = s[start_idx : end_idx + 1]
     return json.loads(json_str)
 
+
+# --- 5. main ---
+
+def main():
+    p = argparse.ArgumentParser(description="LLM(Gemini)로 CSV 일부 자동 라벨링")
+    p.add_argument("--csv", required=True, help="입력 CSV 경로")
+    p.add_argument("--text-col", default="content", help="텍스트 컬럼명")
+    p.add_argument("--out", required=True, help="저장 CSV 경로")
+    p.add_argument("--n", type=int, default=1000, help="라벨링할 샘플 수")
+    p.add_argument("--batch", type=int, default=100, help="한 번에 처리할 샘플 수")
+    p.add_argument("--seed", type=int, default=42, help="샘플링 시드")
+    p.add_argument("--model", default="gemini-2.5-flash", help="Gemini 모델명") # gemini-1.5-flash
+
+    args = p.parse_args()
