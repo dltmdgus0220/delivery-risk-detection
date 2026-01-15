@@ -141,3 +141,12 @@ async def main_async():
 
     args = p.parse_args()
     
+    # 데이터 로드
+    df = pd.read_csv(args.csv)
+    df = df.dropna(subset=[args.text_col, args.score_col]).copy()
+    df = df.head(min(args.n, len(df))).reset_index(drop=True)
+    # df_sample = df.sample(n=min(args.n, len(df)), random_state=args.seed).reset_index(drop=True)
+
+    client = genai.Client() # $env:GEMINI_API_KEY='AIzaSy어쩌구'
+    semaphore = asyncio.Semaphore(args.parallel)
+
