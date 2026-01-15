@@ -166,3 +166,13 @@ def main():
     hours, remainder = divmod(seconds, 3600)
     minutes, seconds = divmod(remainder, 60)
     print(f"소요 시간: {hours:02d}:{minutes:02d}:{seconds:02d}")
+
+    # 데이터 저장
+    df_sample["keywords"] = out_keywords
+
+    os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True) # 부모디렉토리
+    df_sample.to_csv(args.out, index=False, encoding="utf-8-sig")
+    print(f"저장완료: {args.out} ({len(df_sample)}개)")
+
+if __name__ == "__main__":
+    main()
