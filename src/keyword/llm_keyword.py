@@ -116,3 +116,53 @@ def main():
     p.add_argument("--model", default="gemini-2.5-flash", help="Gemini 모델명") # gemini-1.5-flash
 
     args = p.parse_args()
+    
+    df = pd.read_csv(args.csv)
+    df = df.dropna(subset=args.text_col).copy()
+    df_sample = df.sample(n=min(args.n, len(df)), random_state=args.seed).reset_index(drop=True)
+
+    client = genai.Client() # $env:GEMINI_API_KEY='AIzaSy어쩌구'
+
+    out_keywords = []
+    batch_size = args.batch # 200까지는 안정적
+    
+    start = time.time()
+    for i in range(0, len(df_sample), batch_size):
+        batch_slice = df_sample.iloc[i : i + batch_size]
+        batch_texts = batch_slice[args.text_col].astype(str).tolist()
+
+        prompt = build_batch_prompt(batch_texts)
+        print(f"[{i+1}/{len(df_sample)}] 배치 준비")
+        
+        success = False
+        try:
+            # retry 로직 포함
+            success = False
+            for attempt in range(3):
+                try:
+                    resp = client.models.generate_content(model=args.model, contents=prompt, config={"temperature": 0.1})
+                    data = extract_json(resp.text)
+                    
+                    if isinstance(data, list) and len(data) == len(batch_texts): # 리스트가 맞는지, 보낸 텍스트 개수 == 받은 결과 개수
+                        for item in data:
+                            out_keywords.append(item.get("keywords"))
+                        success = True
+                        break
+                except Exception as e:
+                    print(f"Attempt {attempt+1} failed: {e}")
+                    time.sleep(10)
+            
+            if not success:
+                print(f"배치 {i} 최종 실패")
+                out_keywords.extend([[]] * len(batch_texts))
+
+            print("1초 대기")
+            time.sleep(1)
+
+        except Exception as e:
+            print(f"Critical Error at batch {i}: {e}")
+    end = time.time()
+    seconds = int(end-start)
+    hours, remainder = divmod(seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    print(f"소요 시간: {hours:02d}:{minutes:02d}:{seconds:02d}")
