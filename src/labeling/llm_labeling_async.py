@@ -85,3 +85,43 @@ def extract_json(s: str) -> Any:
     json_str = s[start_idx : end_idx + 1]
     return json.loads(json_str)
 
+
+# --- 3. 비동기 처리 ---
+
+async def process_batch(client, model, batch_texts, batch_ratings, batch_index, semaphore) -> List[Dict[str, Any]]:
+    async with semaphore: # 동시 요청 수 제한
+        prompt = build_batch_prompt(batch_texts, batch_ratings)
+        
+        for attempt in range(3): # 재시도 로직
+            try:
+                # 비동기 API 호출
+                # 코루틴: 작업단위, 이벤트루프: 스케줄러, asyncio.to_thread: 오래걸리는 동기호출을 스레드로 분리하여 이벤트루프가 막히지 않고 나머지 코루틴 작업들이 계속 진행되게 함
+                resp = await asyncio.to_thread(
+                    client.models.generate_content,
+                    model=model,
+                    contents=prompt,
+                    config={"temperature": 0.1},
+                )
+                
+                data = extract_json(resp.text)
+                if isinstance(data, list) and len(data) == len(batch_texts):
+                    print(f"배치 {batch_index} 완료")
+                    out = []
+                    for item in data:
+                        out.append(
+                            {
+                                "churn_intent": item.get("churn_intent", ""),
+                                "churn_intent_label": item.get("churn_intent_label", -1),
+                                "churn_intent_confidence": item.get("churn_intent_confidence", 0.0),
+                                "churn_intent_reason": item.get("churn_intent_reason", ""),
+                            }
+                        )
+                    return out
+                
+            except Exception as e:
+                print(f"배치 {batch_index} 시도 {attempt+1} 실패: {e}")
+                await asyncio.sleep(2**attempt) # 지수 백오프
+        
+        print(f"배치 {batch_index} 최종 실패")
+        return [{"churn_intent": "Error", "churn_intent_label": -1, "churn_intent_confidence": 0.0, "churn_intent_reason": "Error"} for _ in batch_texts]
+
