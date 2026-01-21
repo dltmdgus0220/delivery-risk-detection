@@ -30,3 +30,17 @@ print(df4['churn_intent_label'].value_counts())
 print("\n[5 LLM 라벨링]")
 print(df5['churn_intent_label'].value_counts())
 
+
+# --- 2. 일관성 검증 ---
+
+mask1 = (df1['churn_intent'] != df2['churn_intent'])
+mask2 = (df1['churn_intent'] != df3['churn_intent'])
+mask3 = (df1['churn_intent'] != df4['churn_intent'])
+mask4 = (df1['churn_intent'] != df5['churn_intent'])
+
+print()
+print("1과 2 비교:", mask1.sum())
+print("1과 3 비교:", mask2.sum())
+print("1과 4 비교:", mask3.sum())
+print("1과 5 비교:", mask4.sum())
+
