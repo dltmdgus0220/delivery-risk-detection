@@ -9,3 +9,24 @@ p.add_argument("--dir", required=True, help="폴더 경로")
 
 args = p.parse_args()
     
+
+# --- 1. 데이터로드 ---
+
+df = pd.read_csv('data/baemin_reviews_playstore_0_999_hardlabel.csv', encoding='utf-8-sig')
+df1 = pd.read_csv(f'data/{args.dir}/out_0_999_test1.csv', encoding='utf-8-sig')
+df2 = pd.read_csv(f'data/{args.dir}/out_0_999_test2.csv', encoding='utf-8-sig')
+df3 = pd.read_csv(f'data/{args.dir}/out_0_999_test3.csv', encoding='utf-8-sig')
+df4 = pd.read_csv(f'data/{args.dir}/out_0_999_test4.csv', encoding='utf-8-sig')
+df5 = pd.read_csv(f'data/{args.dir}/out_0_999_test5.csv', encoding='utf-8-sig')
+
+print("[1 LLM 라벨링]")
+print(df1['churn_intent_label'].value_counts())
+print("\n[2 LLM 라벨링]")
+print(df2['churn_intent_label'].value_counts())
+print("\n[3 LLM 라벨링]")
+print(df3['churn_intent_label'].value_counts())
+print("\n[4 LLM 라벨링]")
+print(df4['churn_intent_label'].value_counts())
+print("\n[5 LLM 라벨링]")
+print(df5['churn_intent_label'].value_counts())
+
