@@ -44,3 +44,10 @@ print("1과 3 비교:", mask2.sum())
 print("1과 4 비교:", mask3.sum())
 print("1과 5 비교:", mask4.sum())
 
+
+# --- 3. 하드라벨과 비교 ---
+
+print("\n[classification_report]")
+print(classification_report(df['label'], df1['churn_intent_label']))
+
+# df1[mask1][['content', 'churn_intent', 'churn_intent_reason']].to_csv('out_v4_comp2.csv', encoding='utf-8-sig', escapechar='\\')
