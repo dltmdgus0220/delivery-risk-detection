@@ -18,7 +18,6 @@ def build_batch_prompt(texts: List[str], ratings: List[int]) -> str:
         f"ID_{i+1}: (별점 {r}점) {t}" for i, (r, t) in enumerate(zip(ratings, texts))
     ])
     
-    # 강함 기준에 24년 전후 키워드 조사해서 추가해볼 예정
     return f"""
 너는 숙련된 고객 경험 분석가이자 데이터 라벨러다. 아래 가이드라인을 바탕으로 배달 앱 리뷰 {len(texts)}개를 분석하라.
 
