@@ -211,3 +211,4 @@ __marimo__/
 *test*
 *.html
 *old.py
+model_out*
