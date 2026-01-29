@@ -31,3 +31,28 @@ class TrainTextDataset(Dataset):
             "labels": torch.tensor(label, dtype=torch.long)
         }
 
+
+class InferTextDataset(Dataset):
+    def __init__(self, df: pd.DataFrame, tokenizer, text_col: str, max_len: int):
+        self.texts = df[text_col].tolist()
+        self.tokenizer = tokenizer
+        self.max_len = max_len
+
+    def __len__(self):
+        return len(self.texts)
+
+    def __getitem__(self, idx: int):
+        text = self.texts[idx]
+
+        enc = self.tokenizer(
+            text,
+            truncation=True,
+            padding="max_length",
+            max_length=self.max_len,
+            return_tensors="pt",
+        )
+
+        return {
+            "input_ids": enc["input_ids"].squeeze(0), # (1, MAX_LEN) -> (MAX_LEN,)
+            "attention_mask": enc["attention_mask"].squeeze(0), # (1, MAX_LEN) -> (MAX_LEN,)
+        }
