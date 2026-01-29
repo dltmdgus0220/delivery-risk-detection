@@ -30,3 +30,105 @@ def build_argparser():
     p.add_argument("--lr", type=float, default=2e-5, help="학습률")
     return p
 
+# train
+def train_pipeline(args):
+    set_seed(args.seed)
+
+    df = pd.read_csv(args.input, encoding="utf-8-sig")
+    model_id = MODEL_ID[args.model]
+
+    print("모델 :", model_id)
+    print("전체 데이터 수 :", len(df))
+    print("이탈의도 클래스별 분포 :", df[args.label_col].value_counts())
+
+    # split
+    train_df, tmp = train_test_split(
+        df, test_size=0.2, random_state=args.seed, shuffle=True, stratify=df[args.label_col]
+    )
+    val_df, test_df = train_test_split(
+        tmp, test_size=0.5, random_state=args.seed, shuffle=True, stratify=tmp[args.label_col]
+    )
+    print(f"train/val/test : {len(train_df)}/{len(val_df)}/{len(test_df)}")
+
+    # balancing (train only)
+    if args.n == 0:
+        num = min(train_df[args.label_col].value_counts())
+        train_df = balanced_class_extract(train_df, args.label_col, num, args.seed)
+        print("[train set 클래스 밸런싱 완료]")
+    elif args.n > 0:
+        num = min(train_df[args.label_col].value_counts())
+        train_df = balanced_class_extract(train_df, args.label_col, min(num, args.n), args.seed)
+        print("[train set 클래스 밸런싱 완료]")
+
+    if args.n >= 0:
+        print("train set 데이터 수 :", len(train_df))
+        print("이탈의도 클래스별 분포 :", train_df[args.label_col].value_counts())
+
+    # tokenizer/model
+    if args.model == 2: # albert
+        tokenizer = BertTokenizerFast.from_pretrained(model_id)
+    else:
+        tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=True) # use_fast=True: Rust 기반 fast tokenizer 사용, 옛날모델은 미지원.
+    model = AutoModelForSequenceClassification.from_pretrained(model_id, num_labels=3, use_safetensors=True).to(DEVICE) # safetensors: 가중치를 저장하는 포맷
+
+    # dataloader
+    train_loader = DataLoader(
+        TrainTextDataset(train_df, tokenizer, args.text_col, args.label_col, MAX_LEN),
+        batch_size=args.batch, shuffle=True
+    )
+    val_loader = DataLoader(
+        TrainTextDataset(val_df, tokenizer, args.text_col, args.label_col, MAX_LEN),
+        batch_size=args.batch, shuffle=False
+    )
+
+    optimizer = AdamW(model.parameters(), lr=args.lr)
+
+    best = {"recall": -1.0, "precision": -1.0, "loss": float("inf")}
+
+    for epoch in range(1, args.epochs + 1):
+        tr_loss = train_one_epoch(model, train_loader, optimizer, DEVICE)
+        val_metrics = eval_model(model, val_loader, DEVICE)
+
+        cp = val_metrics["class2_precision"]
+        cr = val_metrics["class2_recall"]
+        vl = val_metrics["loss"]
+
+        print(
+            f"[Epoch {epoch}] train_loss={tr_loss:.4f} | "
+            f"val_loss={vl:.4f} val_acc={val_metrics['acc']:.4f} val_f1={val_metrics['f1']:.4f} "
+            f"val_class2_precision={cp:.4f} val_class2_recall={cr:.4f}"
+        )
+
+        # save best model (class2 recall)
+        improved = (
+            (cr > best["recall"] + EPS) or
+            (abs(cr - best["recall"]) <= EPS and cp > best["precision"] + EPS) or
+            (abs(cr - best["recall"]) <= EPS and abs(cp - best["precision"]) <= EPS and vl < best["loss"] - EPS)
+        )
+
+        if improved:
+            best.update({"recall": cr, "precision": cp, "loss": vl})
+
+            os.makedirs(args.save, exist_ok=True)
+            model.save_pretrained(args.save)
+            tokenizer.save_pretrained(args.save)
+
+            print(f"Saved best model | recall={cr:.4f}, precision={cp:.4f}, val_loss={vl:.4f}")
+
+    # test with best checkpoint
+    best_model = AutoModelForSequenceClassification.from_pretrained(args.save).to(DEVICE)
+    best_tokenizer = AutoTokenizer.from_pretrained(args.save, use_fast=True)
+
+    test_loader = DataLoader(
+        InferTextDataset(test_df, best_tokenizer, args.text_col, MAX_LEN),
+        batch_size=args.batch, shuffle=False
+    )
+
+    y_true = test_df[args.label_col]
+    y_pred = predict_texts(best_model, test_loader, DEVICE)
+
+    print("\n[혼동 행렬]")
+    print(confusion_matrix(y_true, y_pred))
+    print("\n[분류 리포트]")
+    print(classification_report(y_true, y_pred, target_names=["없음", "불만", "확정"]))
+
