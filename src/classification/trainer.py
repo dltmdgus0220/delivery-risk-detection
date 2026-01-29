@@ -69,3 +69,19 @@ def eval_model(model, loader, device):
     )[0]
     return {"loss": avg_loss, "acc": acc, "f1": f1, "class2_precision": float(class2_precision), "class2_recall": float(class2_recall)}
 
+# predict
+@torch.no_grad()
+def predict_texts(model, loader, device):
+    model.eval()
+    y_pred = []
+
+    for batch in tqdm(loader, desc="Predict", leave=True):
+        batch = {k: v.to(device) for k, v in batch.items() if k in ['input_ids', 'attention_mask']}
+        out = model(**batch)
+
+        logits = out.logits
+        preds = torch.argmax(logits, dim=-1)  # (batch_size,)
+
+        y_pred.extend(preds.detach().cpu().numpy().tolist())
+
+    return y_pred
