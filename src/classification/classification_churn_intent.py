@@ -132,3 +132,17 @@ def train_pipeline(args):
     print("\n[분류 리포트]")
     print(classification_report(y_true, y_pred, target_names=["없음", "불만", "확정"]))
 
+# inference
+def infer_pipeline(args):
+    df = pd.read_csv(args.input, encoding="utf-8-sig")
+
+    tokenizer = AutoTokenizer.from_pretrained(args.save, use_fast=True)
+    model = AutoModelForSequenceClassification.from_pretrained(args.save).to(DEVICE)
+
+    loader = DataLoader(InferTextDataset(df, tokenizer, args.text_col, MAX_LEN), batch_size=args.batch, shuffle=False)
+    preds = predict_texts(model, loader, DEVICE)
+    df['churn_intent'] = [id2label[p] for p in preds]
+    df['churn_intent_label'] = preds
+
+    df.to_csv('out.csv', encoding='utf-8-sig', escapechar='\\')
+
