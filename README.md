@@ -50,8 +50,8 @@
 ├── requirements.txt # Python 의존성 목록
 ├── data/ # 원시/결과 데이터 저장 경로
 ├── model_out/ # 학습된 모델 가중치 저장 경로
-├── data_collect.py # 데이터수집
 └── src/
+    ├── data_collect.py # 데이터수집
     ├── classification/
     |   ├── classifier.py # 이탈의도분류
     |   ├── configs.py
