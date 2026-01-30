@@ -31,10 +31,9 @@ def build_argparser():
     return p
 
 # train
-def train_pipeline(args):
+def train_pipeline(df, args):
     set_seed(args.seed)
 
-    df = pd.read_csv(args.input, encoding="utf-8-sig")
     model_id = MODEL_ID[args.model]
 
     print("모델 :", model_id)
@@ -133,9 +132,8 @@ def train_pipeline(args):
     print(classification_report(y_true, y_pred, target_names=["없음", "불만", "확정"]))
 
 # inference
-def infer_pipeline(input, save, text_col, batch):
-    df = pd.read_csv(input, encoding="utf-8-sig")
-
+def infer_pipeline(df, save, text_col, batch):
+    
     tokenizer = AutoTokenizer.from_pretrained(save, use_fast=True)
     model = AutoModelForSequenceClassification.from_pretrained(save).to(DEVICE)
 
@@ -144,18 +142,20 @@ def infer_pipeline(input, save, text_col, batch):
     df['churn_intent'] = [id2label[p] for p in preds]
     df['churn_intent_label'] = preds
 
-    df.to_csv('out.csv', encoding='utf-8-sig', escapechar='\\')
+    return df
 
 
 def main():
     os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
     args = build_argparser().parse_args()
+    df = pd.read_csv(input, encoding="utf-8-sig")
 
     if args.mode == "train":
-        train_pipeline(args)
+        train_pipeline(df, args)
     else:
-        infer_pipeline(args.input, args.save, args.text_col, args.batch)
+        df = infer_pipeline(df, args.save, args.text_col, args.batch)
 
+    df.to_csv('out.csv', encoding='utf-8-sig', escapechar='\\')
 
 if __name__ == "__main__":
     main()
