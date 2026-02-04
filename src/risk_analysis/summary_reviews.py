@@ -105,3 +105,53 @@ def select_target_keyword_and_reviews(df:pd.DataFrame, target:str | None=None) -
 
     return target, reviews
 
+
+# --- 5. 요약 파이프라인 ---
+
+def summary_pipeline(df:pd.DataFrame, model:str="gemini-2.0-flash"):
+    # 클래스 분리
+    df_positive = df[df["churn_intent_label"] == 0].copy()
+    df_complaint = df[df["churn_intent_label"] == 1].copy()
+    df_confirmed = df[df["churn_intent_label"] == 2].copy()
+
+    target1, target2 = None, None
+    ret = ""
+    # "불만","확정" 클래스 모두 없는 경우
+    if df_confirmed.empty and df_complaint.empty:
+        target1, reviews = select_target_keyword_and_reviews(df_positive)
+        resp = llm_summary_reviews(target1, reviews, model)
+        ret += f"리뷰 작성자 대부분이 만족하고 있으며, 특히 [{resp}] 등 '{target1}'에 대해 만족하고 있습니다."
+        flag = 0
+
+    # "불만" 클래스가 없는 경우 "확정" 클래스 기반으로 리뷰 요약
+    elif df_confirmed.empty and not df_complaint.empty:
+        target1, reviews = select_target_keyword_and_reviews(df_confirmed)
+        resp = llm_summary_reviews(target1, reviews, model)
+        ret += f"이탈 고객은 [{resp}] 등의 문제로 '{target1}'에 대한 불만이 이탈로 이어지고 있습니다."
+        flag = 1
+
+    # "확정" 클래스가 없는 경우 "불만" 클래스 기반으로 리뷰 요약
+    elif not df_confirmed.empty and df_complaint.empty:
+        target1, reviews = select_target_keyword_and_reviews(df_complaint)
+        resp = llm_summary_reviews(target1, reviews, model)
+        ret += f"이탈 의도가 명확한 리뷰는 확인되지 않습니다."
+        ret += f"\n반면, 비이탈 고객은 [{resp}] 상황에서 '{target1}'에 대한 불만을 느끼고 있습니다."
+        flag = 2
+
+    else:
+        target1, reviews = select_target_keyword_and_reviews(df_confirmed)
+        resp = llm_summary_reviews(target1, reviews, model)
+        ret += f"이탈 고객은 [{resp}] 등의 문제로 '{target1}'에 대한 불만이 이탈로 이어지고 있습니다."
+        target2, reviews = select_target_keyword_and_reviews(df_complaint, target1)
+        if reviews:
+            resp = llm_summary_reviews(target2, reviews, model)
+            ret += f"\n마찬가지로, 비이탈 고객도 [{resp}] 상황에서 '{target2}'에 대한 불만을 느끼고 있어 이탈 위험이 존재합니다."
+            flag = 3
+        else:
+            target2, reviews = select_target_keyword_and_reviews(df_complaint)
+            resp = llm_summary_reviews(target2, reviews, model)
+            ret += f"\n반면, 비이탈 고객은 [{resp}] 상황에서 '{target2}'에 대한 불만을 느끼고 있습니다."
+            flag = 4
+
+    return ret, flag, target1, target2
+
