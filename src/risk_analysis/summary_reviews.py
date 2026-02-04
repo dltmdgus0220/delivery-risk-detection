@@ -155,3 +155,28 @@ def summary_pipeline(df:pd.DataFrame, model:str="gemini-2.0-flash"):
 
     return ret, flag, target1, target2
 
+    
+# --- 5. main ---
+
+def main():
+    p = argparse.ArgumentParser(description="동기식 LLM 리뷰요약")
+    p.add_argument("--csv", required=True)
+    p.add_argument("--model", default="gemini-2.0-flash")
+
+    args = p.parse_args()
+    
+    # 데이터 로드
+    df = pd.read_csv(args.csv)
+    df['keywords'] = df['keywords'].map(str_to_list_keyword)
+    print(df['churn_intent'].value_counts())
+    print("모델:", args.model)
+    
+    # 리뷰 요약
+    start_time = time.time()
+    ret, _ = summary_pipeline(df, args.model)
+    end_time = time.time()
+    print(f"소요 시간: {time.strftime('%H:%M:%S', time.gmtime(end_time - start_time))}")
+    print(ret)
+
+if __name__ == "__main__":
+    main()
