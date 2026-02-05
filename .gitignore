@@ -212,3 +212,4 @@ __marimo__/
 *.html
 *old.py
 model_out*
+*.db
