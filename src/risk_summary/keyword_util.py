@@ -13,3 +13,12 @@ def keyword_count(df:pd.DataFrame) -> Counter:
     
     return counter
 
+# 키워드 비율 계산
+def target_keyword_ratio(counter:Counter, target:str) -> float:
+    total = sum(counter.values())
+    if total == 0: # 키워드가 없다면
+        return 0.0
+
+    count = counter[target]
+    return round((count / total) * 100, 2)
+
