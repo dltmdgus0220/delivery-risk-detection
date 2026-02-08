@@ -6,7 +6,7 @@ import argparse
 import pandas as pd
 from google import genai
 from typing import Tuple
-from src.risk_summary.keyword_util import keyword_count, top_n_keywords_extract
+from src.dashboard.util import keyword_count, top_n_keywords_extract
 
 
 # --- 1. 기타 ---
