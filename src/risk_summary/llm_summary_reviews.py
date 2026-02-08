@@ -1,67 +1,93 @@
+import os
+import re
+import json
+import time
+import argparse
 import pandas as pd
 from google import genai
-from typing import Tuple, List, Optional
-import argparse
-import time
-import re
-from collections import Counter
-import os
+from typing import Tuple
+from src.risk_summary.keyword_util import keyword_count, top_n_keywords_extract
 
+
+# --- 1. 기타 ---
 
 EXCEPT_KEYWORD = ['앱-삭제', '앱-탈퇴']
+JSON_TEMPLATE_EX = """
+{
+  "situations": [
+    "조리 완료 후 20~30분간 배달원이 배정되지 않아 음식이 식은 채 방치됨",
+    "도착 예정 시간이 사전 고지 없이 10분 단위로 계속 연장되어 예측 불가능한 대기 발생"
+  ],
+  "evaluations": [
+    "지연 시간에 비해 턱없이 적은 보상으로 인해 고객이 '기만당했다'고 느낌",
+    "문제 발생 시 상담사 연결이 어렵고 기계적인 챗봇 응대만 반복되어 분노가 증폭됨"
+  ],
+  "solutions": [
+    "상습 지연 가게 및 배달원에 대한 플랫폼 차원의 강력한 페널티 및 입점 제한 정책 도입",
+    "배달 지연 시 실시간 상담원 연결 우선권 부여 및 진정성 있는 보상안(배달비 환불 등) 마련"
+  ],
+  "reason_id": ["id1", "id2", "id3"]
+}
+""".strip()
 
-# --- 1. 기타 함수 ---
+def str_to_list(x):
+    x = x.strip("[]")
 
-def str_to_list_keyword(keywords: str) -> List[str]:
-    keywords = keywords.strip('[]')
-    if len(keywords) == 0:
+    if not x:
         return []
-    else:
-        return [x.strip() for x in keywords.replace("'", "").split(",")]
 
-def clean_one_line(s:str) -> str:
-    s = (s or "").strip() # 양쪽 공백 제거
-    s = s.strip().strip('"').strip("'").strip() # 양쪽 따옴표 제거
-    s = s.replace("\n", " ").replace("\r", " ") # 줄바꿈->공백 변환. 한줄로 결과 바꾸기
-    s = re.sub(r"\s+", " ", s).strip() # 연속되는 여러 개의 공백 변환
-    s = re.sub(r"^[\-\*\d\.\)\s]+", "", s).strip() # 불릿/번호 형태 제거
-    return s
+    return [item.strip().strip('"').strip("'") for item in x.split(",") if item.strip()]
 
 
 # --- 2. 프롬프트 생성 ---
 
-def build_batch_prompt(texts: List[str], keyword) -> str:
-    text_inputs = "\n".join([
-        f"ID_{i+1}: {t}" for i, t in enumerate(texts)
-    ]) 
+def build_batch_prompt(reviews: dict, keyword) -> str:
+    inputs = "\n".join([f"- id: {rid} | {content}" for rid, content in reviews.items()])
     return f"""
-너는 고객 리뷰 데이터를 분석하는 데이터 분석가다.
-주어진 리뷰 목록을 바탕으로 공통적으로 나타나는 불만 포인트를 "명사구"로 추출하라.
-리뷰에 없는 내용을 추측하거나 과장하지 마라.
+당신은 고객 경험(CX) 분석 전문가입니다.
+제공된 리뷰 데이터는 {keyword} 키워드를 포함한 리뷰들입니다.
+이 리뷰들을 분석하여 서비스 개선을 위한 인사이트를 다음 항목에 맞춰 요약해 주세요.
 
-[제한 사항]
-- 반드시 "{keyword}" 키워드가 포함된 리뷰들의 맥락에 맞춰 요약하라.
-- 출력은 정확히 2~3개 항목만 포함하라.
-- 각 항목은 2~10자 내의 짧은 명사구(예: "불친절한 고객센터")로 작성하라.
-- 항목은 쉼표(,)로만 구분하고 따옴표/불릿/번호 없이 출력하라.
-    
+중요 규칙:
+- 반드시 아래 [Review List]의 내용에만 근거하여 객관적으로 작성하세요.
+- 출력은 반드시 **순수한 JSON 객체(Object)** 하나만 출력하세요.
+- **JSON 외의 어떤 설명, 인사말, 코드블록(```)도 절대 포함하지 마세요.**
+- reason_id에는 근거로 사용한 리뷰의 id를 최대 20개까지 넣으세요(Review List의 id 그대로).
+
+작성 가이드라인:
+- 각 배열 항목은 불렛이 아니라, JSON 문자열 리스트로 작성하세요.
+- 가치 판단/비난 없이 사용자 의견을 객관적으로 정리하세요.
+
+### 1. 'situations' 
+- [{keyword}] 관련 주요 이탈 원인
+- 사용자가 해당 문제를 경험할 때 주로 발생하는 구체적인 상황들을 나열하세요.
+- 단순한 현상 외에, 그 문제가 발생함으로써 유발되는 2차적인 불편함이나 감정적 불쾌감을 포함하세요.
+
+### 2. 'evaluations'
+- 문제 발생 시 기존 대응에 대한 평가
+- 현재 시스템이나 고객센터, 가게 측의 대응(보상, 안내 방식, 소통 창구 등)에 대해 사용자들이 느끼는 솔직한 피드백을 요약하세요.
+- 사용자가 '부족하다'고 느끼거나 '오히려 기분이 나빴다'고 언급한 지점이 어디인지 명확히 짚어주세요.
+
+### 3. 'solutions'
+- 사용자들이 원하는 근본적인 해결 방안
+- 리뷰어들이 직접 제안하거나, 불만 내용에서 유추할 수 있는 실질적인 개선책을 정리하세요.
+- (예: 시스템 정책 변경, 패널티 강화, 보상 체계 현실화, 실시간 소통 강화 등)
+
+### 4. 'reason_id'
+- 위 분석의 근거가 된 리뷰 ID 리스트를 반환하세요. (최대 20개)
+
 [Review List]
-{text_inputs}
-
-[입력 예시]
-"ID_1: 고객센터 교육 다시 해라"
-"ID_2: 배달이 잘못 와서 전화했는데 고작 3천원 쿠폰주고 끝이다"
-"ID_3: 상담원이 너무 불친절하고 문제를 해결해줄 의지가 없음."
+{inputs}
 
 [출력 예시]
-불친절한 고객센터, 불만족스러운 보상
+{JSON_TEMPLATE_EX}
 
 """.strip()
 
 
 # --- 3. 리뷰 요약 함수 ---
 
-def llm_summary_reviews(keyword:str, lst: List[str], model:str="gemini-2.0-flash") -> str:
+def llm_summary_reviews(reviews: dict, keyword:str, model:str="gemini-2.0-flash") -> dict:
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError("환경변수 GEMINI_API_KEY를 설정해 주세요. ($env:GEMINI_API_KEY=...)")
@@ -69,114 +95,77 @@ def llm_summary_reviews(keyword:str, lst: List[str], model:str="gemini-2.0-flash
     client = genai.Client(api_key=api_key)
 
     # 리뷰 전체를 한 번에 입력
-    prompt = build_batch_prompt(lst, keyword)
+    prompt = build_batch_prompt(reviews, keyword)
 
     resp = client.models.generate_content(
         model=model,
         contents=prompt,
+        config={"response_mime_type": "application/json"}
     )
 
-    resp = clean_one_line(getattr(resp, "text", ""))
-    return resp
+    return json.loads(resp.text)
 
+# --- 4. 요약 파이프라인 ---
 
-# --- 4. 리뷰 전처리 ---
+# case 분류
+# 1. "불만","확정" 클래스 모두 없는 경우 => '없음'만 리뷰 요약 => 어떤 점이 강점인지(아직 미구현)
+# 2. "불만" 클래스가 없는 경우 => '확정'만 리뷰 요약
+# 3. "확정" 클래스가 없는 경우 => '불만'만 리뷰 요약
+# 4. 타겟 키워드가 "불만" 클래스에 없는 경우 => 각 클래스별 top 키워드로 요약
+# 5. "불만","확정" 클래스 모두 존재. 타겟 키워드가 "불만" 클래스에 존재
 
-def select_target_keyword_and_reviews(df:pd.DataFrame, target:str | None=None) -> Tuple[str, List[str]]:
-    # top 키워드 도출
-    def _top_keyword(d: pd.DataFrame, exclude: List[str]) -> Optional[str]:
-        kws = [k for ks in d["keywords"] for k in ks if k not in exclude]
-        if not kws:
-            return None
-        return Counter(kws).most_common(1)[0][0]
-
-    # 타겟 키워드 포함한 리뷰 도출
-    def _collect_reviews(d: pd.DataFrame, kw: str) -> List[str]:
-        if kw is None or d.empty:
-            return []
-        mask = d["keywords"].apply(lambda ks: kw in ks)
-        return d.loc[mask, "content"].dropna().astype(str).tolist()
-    
-    if target:
-        reviews = _collect_reviews(df, target)
-    else:
-        target = _top_keyword(df, EXCEPT_KEYWORD)
-        reviews = _collect_reviews(df, target)
-
-    return target, reviews
-
-
-# --- 5. 요약 파이프라인 ---
-
-def summary_pipeline(df:pd.DataFrame, model:str="gemini-2.0-flash"):
+# 우선 5번 케이스만 구현하기
+def summary_pipeline(df:pd.DataFrame, model:str="gemini-2.0-flash") -> Tuple[dict, dict]:
     # 클래스 분리
     df_positive = df[df["churn_intent_label"] == 0].copy()
     df_complaint = df[df["churn_intent_label"] == 1].copy()
     df_confirmed = df[df["churn_intent_label"] == 2].copy()
 
-    target1, target2 = None, None
-    ret = ""
-    # "불만","확정" 클래스 모두 없는 경우
-    if df_confirmed.empty and df_complaint.empty:
-        target1, reviews = select_target_keyword_and_reviews(df_positive)
-        resp = llm_summary_reviews(target1, reviews, model)
-        ret += f"리뷰 작성자 대부분이 만족하고 있으며, 특히 [{resp}] 등 '{target1}'에 대해 만족하고 있습니다."
-        flag = 0
+    # api 호출 시 입력으로 들어갈 상위 리뷰 500개 추출
+    df_complaint = df_complaint.sort_values(by=['thumbsUpCount', 'at'], ascending=[False, False]).head(500)
+    df_confirmed = df_confirmed.sort_values(by=['thumbsUpCount', 'at'], ascending=[False, False]).head(500)
 
-    # "불만" 클래스가 없는 경우 "확정" 클래스 기반으로 리뷰 요약
-    elif df_confirmed.empty and not df_complaint.empty:
-        target1, reviews = select_target_keyword_and_reviews(df_confirmed)
-        resp = llm_summary_reviews(target1, reviews, model)
-        ret += f"이탈 고객은 [{resp}] 등의 문제로 '{target1}'에 대한 불만이 이탈로 이어지고 있습니다."
-        flag = 1
+    # '확정' top 키워드 추출
+    counter = keyword_count(df_confirmed)
+    topn = top_n_keywords_extract(counter)
+    target = topn[0][0]
 
-    # "확정" 클래스가 없는 경우 "불만" 클래스 기반으로 리뷰 요약
-    elif not df_confirmed.empty and df_complaint.empty:
-        target1, reviews = select_target_keyword_and_reviews(df_complaint)
-        resp = llm_summary_reviews(target1, reviews, model)
-        ret += f"이탈 의도가 명확한 리뷰는 확인되지 않습니다."
-        ret += f"\n반면, 비이탈 고객은 [{resp}] 상황에서 '{target1}'에 대한 불만을 느끼고 있습니다."
-        flag = 2
+    # 여기서 케이스 분기점 만들어야 함. (추후 예정)
+    # 타겟 키워드 포함하는 리뷰 추출
+    review_complaint = {rid: content for rid, content, ks in zip(df_complaint['reviewId'], df_complaint["content"], df_complaint["keywords"]) if target in ks}
+    review_confirmed = {rid: content for rid, content, ks in zip(df_confirmed['reviewId'], df_confirmed["content"], df_confirmed["keywords"]) if target in ks}
 
-    else:
-        target1, reviews = select_target_keyword_and_reviews(df_confirmed)
-        resp = llm_summary_reviews(target1, reviews, model)
-        ret += f"이탈 고객은 [{resp}] 등의 문제로 '{target1}'에 대한 불만이 이탈로 이어지고 있습니다."
-        target2, reviews = select_target_keyword_and_reviews(df_complaint, target1)
-        if reviews:
-            resp = llm_summary_reviews(target2, reviews, model)
-            ret += f"\n마찬가지로, 비이탈 고객도 [{resp}] 상황에서 '{target2}'에 대한 불만을 느끼고 있어 이탈 위험이 존재합니다."
-            flag = 3
-        else:
-            target2, reviews = select_target_keyword_and_reviews(df_complaint)
-            resp = llm_summary_reviews(target2, reviews, model)
-            ret += f"\n반면, 비이탈 고객은 [{resp}] 상황에서 '{target2}'에 대한 불만을 느끼고 있습니다."
-            flag = 4
+    # 리뷰 요약
+    summary_complaint = llm_summary_reviews(review_complaint, target, model)
+    summary_confirmed = llm_summary_reviews(review_confirmed, target, model)
 
-    return ret, flag, target1, target2
+    return summary_complaint, summary_confirmed
 
-    
+
 # --- 5. main ---
 
 def main():
     p = argparse.ArgumentParser(description="동기식 LLM 리뷰요약")
     p.add_argument("--csv", required=True)
-    p.add_argument("--model", default="gemini-2.0-flash")
+    p.add_argument("--model", default="gemini-2.0-flash") # gemini-2.5-flash, gemini-3-flash-preview
 
     args = p.parse_args()
     
     # 데이터 로드
     df = pd.read_csv(args.csv)
-    df['keywords'] = df['keywords'].map(str_to_list_keyword)
+    df['keywords'] = df['keywords'].map(str_to_list)
     print(df['churn_intent'].value_counts())
     print("모델:", args.model)
     
     # 리뷰 요약
     start_time = time.time()
-    ret, _ = summary_pipeline(df, args.model)
+    summary_complaint, summary_confirmed = summary_pipeline(df, args.model)
     end_time = time.time()
     print(f"소요 시간: {time.strftime('%H:%M:%S', time.gmtime(end_time - start_time))}")
-    print(ret)
+    print("['불만' 리뷰 요약]")
+    print(summary_complaint)
+    print("\n['확정' 리뷰 요약]")
+    print(summary_confirmed)
 
 if __name__ == "__main__":
     main()
