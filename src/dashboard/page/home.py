@@ -45,3 +45,13 @@ def _count_between(conn, start_dt: datetime, end_dt: datetime) -> int:
     cur.close()
     return int(n)
 
+def _minmax_and_total(conn):
+    cur = conn.execute(
+        f"""
+        SELECT MIN(date({DATE_COL})), MAX(date({DATE_COL})), COUNT(*)
+        FROM {TABLE}
+        """
+    )
+    mn, mx, total = cur.fetchone()
+    cur.close()
+    return mn, mx, int(total)
