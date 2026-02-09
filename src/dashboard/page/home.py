@@ -65,3 +65,19 @@ def _fmt_k(n: int) -> str:
         return f"{n/1000:.1f}k"
     return f"{n}"
 
+# --- 메인 렌더링 유틸 ---
+
+def _has_data_between(conn, start_dt: datetime, end_dt: datetime) -> bool:
+    cur = conn.execute(
+        f"""
+        SELECT 1
+        FROM {TABLE}
+        WHERE date({DATE_COL}) BETWEEN date(?) AND date(?)
+        LIMIT 1
+        """,
+        (start_dt.strftime("%Y-%m-%d"), end_dt.strftime("%Y-%m-%d")),
+    )
+    row = cur.fetchone()
+    cur.close()
+    return row is not None
+
