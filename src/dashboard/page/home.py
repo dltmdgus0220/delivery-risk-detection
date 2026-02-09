@@ -32,3 +32,16 @@ def _month_range(today:datetime, offset_months: int = 0):
     end = next_month - timedelta(days=1)
     return start, end
 
+def _count_between(conn, start_dt: datetime, end_dt: datetime) -> int:
+    cur = conn.execute(
+        f"""
+        SELECT COUNT(*)
+        FROM {TABLE}
+        WHERE date({DATE_COL}) BETWEEN date(?) AND date(?)
+        """,
+        (start_dt.strftime("%Y-%m-%d"), end_dt.strftime("%Y-%m-%d")),
+    )
+    n = cur.fetchone()[0]
+    cur.close()
+    return int(n)
+
