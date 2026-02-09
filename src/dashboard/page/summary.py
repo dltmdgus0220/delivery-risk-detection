@@ -125,7 +125,6 @@ def kpi_card(label: str, value: str, delta_text: str, delta_is_good: bool):
 def class_mini_card(label, count, ratio, delta_p, delta_is_good: bool):
     # delta_p가 +면 좋다/나쁘다는 정책이 있을 텐데, 지금은 "증가=초록"으로 유지
     cls = "pos" if delta_is_good else "neg"
-    icon = "▲" if delta_is_good else "▼"
 
     st.markdown(
         f"""
@@ -134,7 +133,7 @@ def class_mini_card(label, count, ratio, delta_p, delta_is_good: bool):
           <div class="count">
             {count:,}건 <span class="ratio">({ratio:.1f}%)</span>
           </div>
-          <div class="pill {cls}">{icon} {abs(delta_p):.1f}%p</div>
+          <div class="pill {cls}"> {(delta_p):.1f}%p</div>
         </div>
         """,
         unsafe_allow_html=True,
