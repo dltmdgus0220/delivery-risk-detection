@@ -105,3 +105,38 @@ def inject_css():
         unsafe_allow_html=True,
     )
 
+# 데이터수/이탈지수 카드
+def kpi_card(label: str, value: str, delta_text: str, delta_is_good: bool):
+    # delta_is_good=True면 초록(긍정), False면 빨강(부정)
+    cls = "pos" if delta_is_good else "neg"
+
+    st.markdown(
+        f"""
+        <div class="kpi">
+          <div class="label">{label}</div>
+          <div class="value">{value}</div>
+          <div class="pill {cls}">{delta_text}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+# 클래스별 변화 카드
+def class_mini_card(label, count, ratio, delta_p, delta_is_good: bool):
+    # delta_p가 +면 좋다/나쁘다는 정책이 있을 텐데, 지금은 "증가=초록"으로 유지
+    cls = "pos" if delta_is_good else "neg"
+    icon = "▲" if delta_is_good else "▼"
+
+    st.markdown(
+        f"""
+        <div class="mini">
+          <div class="title">{label}</div>
+          <div class="count">
+            {count:,}건 <span class="ratio">({ratio:.1f}%)</span>
+          </div>
+          <div class="pill {cls}">{icon} {abs(delta_p):.1f}%p</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
