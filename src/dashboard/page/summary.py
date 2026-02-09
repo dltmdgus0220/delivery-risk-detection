@@ -288,3 +288,40 @@ def render_keyword_ratio_compare_bar(
 
     st.plotly_chart(fig, use_container_width=True)
 
+# summary 컬럼 추출 (str -> dict)
+def _as_dict(x):
+    """dict 또는 JSON string을 dict로 변환. 실패하면 빈 dict."""
+    if x is None or (isinstance(x, float) and pd.isna(x)):
+        return {}
+    if isinstance(x, dict):
+        return x
+    if isinstance(x, str):
+        s = x.strip()
+        if not s:
+            return {}
+        try:
+            return json.loads(s)
+        except Exception:
+            return {}
+    return {}
+
+# reason_id 컬럼 추출 (str -> list)
+def _as_id_list(x):
+    if isinstance(x, list):
+        return x
+    if isinstance(x, str):
+        s = x.strip()
+        if not s:
+            return []
+        # JSON list 형태면 파싱 시도
+        if (s.startswith("[") and s.endswith("]")) or (s.startswith("{") and s.endswith("}")):
+            try:
+                v = json.loads(s)
+                if isinstance(v, list):
+                    return v
+                if isinstance(v, dict) and "reason_id" in v:
+                    return _as_id_list(v["reason_id"])
+            except Exception:
+                pass
+    return [x]
+
