@@ -426,3 +426,49 @@ def render(cfg: dict, today):
     st.markdown(f"### {year % 100:02d}년 {month:02d}월 데이터 요약")
 
     st.divider()
+
+    # 1행 (집계요약, 키워드분석)
+    left, right = st.columns([1, 1.8])
+
+    # -------- 집계 요약 --------
+    with left:
+        st.markdown("#### 📌 수집 현황")
+
+        delta_cnt = len(df_cur) - len(df_prev)
+        kpi_left, kpi_right = st.columns(2)
+
+        with kpi_left:
+            kpi_card(
+                label="데이터 수",
+                value=f"{len(df_cur):,}건",
+                delta_text=f"{delta_cnt:+,}건",
+                delta_is_good=(delta_cnt >= 0),
+            )
+
+        with kpi_right:
+            churn_value = df_cur_summary.iloc[0]['risk_score']
+            churn_delta = churn_value - df_prev_summary.iloc[0]['risk_score']
+            kpi_card(
+                label="이탈지수",
+                value=f"{churn_value:.2f}",
+                delta_text=f"{churn_delta:+.2f}",
+                delta_is_good=(churn_delta < 0),
+            )
+
+        st.divider()
+
+        st.markdown("##### 클래스별 변화")
+        r1, r2, r3 = st.columns(3)
+
+        with r1:
+            delta_p = round(ratio_cur_confirmed - ratio_prev_confirmed, 1)
+            class_mini_card("'확정'", len(df_cur_confirmed), ratio_cur_confirmed, delta_p, (delta_p < 0))
+
+        with r2:
+            delta_p = round(ratio_cur_complaint - ratio_prev_complaint, 1)
+            class_mini_card("불만", len(df_cur_complaint), ratio_cur_complaint, delta_p, (delta_p < 0))
+
+        with r3:
+            delta_p = round(ratio_cur_positive - ratio_prev_positive, 1)
+            class_mini_card("없음", len(df_cur_positive), ratio_cur_positive, delta_p, (delta_p > 0))
+
