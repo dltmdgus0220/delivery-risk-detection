@@ -112,3 +112,6 @@ def _fetch_month_df(conn, start_dt: datetime, end_dt: datetime) -> pd.DataFrame:
     df["at"] = pd.to_datetime(df["at"]).dt.date
     return df
 
+def _label_name(x: int) -> str:
+    # 네 파이프라인 기준: 0=없음, 1=불만, 2=확정
+    return {0: "없음", 1: "불만", 2: "확정"}.get(int(x), str(x))
