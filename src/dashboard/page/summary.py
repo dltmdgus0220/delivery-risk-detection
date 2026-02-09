@@ -518,3 +518,42 @@ def render(cfg: dict, today):
                 )
 
     st.divider()
+
+    # 2행 (요약, 드릴다운)
+    bottom_left, bottom_right = st.columns([1, 1.7])
+
+    # -------- 요약 & 대응 --------
+    with bottom_left:
+        st.markdown(f"#### 🧠 '{topn[0][0]}' 중심 요약")
+
+        # ✅ 확정/불만/둘다 선택
+        view_mode = st.radio(
+            "표시할 요약 선택",
+            options=["확정", "불만"],
+            horizontal=True,
+            label_visibility="collapsed",
+            key="summary_view_mode",
+        )
+
+        if df_cur_summary is None or df_cur_summary.empty:
+            st.info("요약 데이터가 없습니다.")
+        else:
+            row0 = df_cur_summary.iloc[0]
+
+            confirmed_obj = row0.get("summary_confirmed", None)
+            complaint_obj = row0.get("summary_complaint", None)
+
+            if view_mode in ["확정"]:
+                render_summary_section("'확정' 리뷰 분석", confirmed_obj)
+
+            elif view_mode in ["불만"]:
+                render_summary_section("'불만' 리뷰 분석", complaint_obj)
+
+        st.markdown("#### 🛠 추천 대응")
+
+        st.success(
+            "• 배송 SLA 점검\n"
+            "• 특정 지역 지연 원인 분석\n"
+            "• 고객 커뮤니케이션 강화"
+        )
+
