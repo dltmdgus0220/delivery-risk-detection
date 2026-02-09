@@ -81,3 +81,20 @@ def _has_data_between(conn, start_dt: datetime, end_dt: datetime) -> bool:
     cur.close()
     return row is not None
 
+def _pick_target_month(db_path: str, today: datetime):
+    """
+    이번달 데이터 있으면 이번달, 없으면 지난달을 선택
+    return: (start_dt, end_dt, subtitle_str)
+    """
+    conn = sqlite3.connect(db_path)
+    try:
+        cur_s, cur_e = _month_range(today, 0)
+        if _has_data_between(conn, cur_s, cur_e):
+            target_s, target_e = cur_s, cur_e
+        else:
+            prev_s, prev_e = _month_range(today, -1)
+            target_s, target_e = prev_s, prev_e
+    finally:
+        conn.close()
+    subtitle = target_s.strftime("%y년 %m월 데이터 현황")
+    return target_s, target_e, subtitle
