@@ -140,3 +140,36 @@ def class_mini_card(label, count, ratio, delta_p, delta_is_good: bool):
         unsafe_allow_html=True,
     )
 
+# 특정 월 데이터 추출
+def fetch_month_df(db_path: str, table: str, yyyymm: str) -> pd.DataFrame:
+    year, month = map(int, yyyymm.split("-"))
+
+    start_date = date(year, month, 1)
+    end_date = start_date + relativedelta(months=1)
+
+    conn = sqlite3.connect(db_path)
+
+    if table == 'data':
+        query = f"""
+            SELECT *
+            FROM {table}
+            WHERE at >= ? AND at < ?
+        """
+        params = (start_date.isoformat(), end_date.isoformat())
+    elif table == "summary":
+        query = f"""
+            SELECT *
+            FROM {table}
+            WHERE month = ?
+        """
+        params = (yyyymm,)
+
+    df = pd.read_sql(
+        query,
+        conn,
+        params=params
+    )
+
+    conn.close()
+    return df
+
