@@ -261,3 +261,33 @@ def render(cfg: dict, today: datetime):
                 )
 
                 st.altair_chart(pie + text, use_container_width=True)
+
+            # 일별 리뷰 수 추이 꺾은선 그래프
+            with c2:
+                st.subheader("일별 리뷰 수 추이")
+                daily = (
+                    df.groupby("at")
+                    .size()
+                    .reset_index(name="cnt")
+                    .sort_values("at")
+                )
+                daily["day"] = pd.to_datetime(daily["at"]).dt.strftime("%d일")
+
+                line = (
+                    alt.Chart(daily)
+                    .mark_line(point=True)
+                    .encode(
+                        x=alt.X(
+                            "day:N",
+                            axis=alt.Axis(title=None, tickCount=7, labelAngle=0),
+                        ),
+                        y=alt.Y("cnt:Q", axis=alt.Axis(title="리뷰 수")),
+                        tooltip=["day:N", "cnt:Q"],
+                    )
+                )
+                st.altair_chart(line, use_container_width=True)
+
+    except Exception as e:
+        st.caption(f"메인 차트 로딩 실패: {e}")
+        return  # df 없는데 아래 쓰면 터지니까 안전 종료
+
