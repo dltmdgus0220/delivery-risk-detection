@@ -167,3 +167,48 @@ def render_sidebar(today):
         except Exception as e:
             status.empty()
             st.sidebar.error(f"실행 실패: {e}")
+
+    # ---- 사이드바 하단: DB 요약 ----
+    st.sidebar.divider()
+    st.sidebar.subheader("DB 요약")
+
+    try:
+        conn = sqlite3.connect(db_path)
+
+        cur_s, cur_e = _month_range(today, 0)      # 이번 달
+        prev_s, prev_e = _month_range(today, -1)  # 지난 달
+
+        cur_cnt = _count_between(conn, cur_s, cur_e)
+        prev_cnt = _count_between(conn, prev_s, prev_e)
+
+        mn, mx, total = _minmax_and_total(conn)
+        conn.close()
+
+        line1 = (
+            f"이번 달 데이터 : "
+            f"{_fmt_yy_mm_dd(cur_s.strftime('%Y-%m-%d'))}"
+            f"~{_fmt_yy_mm_dd(cur_e.strftime('%Y-%m-%d'))} "
+            f"(총 {cur_cnt}개)"
+        )
+        line2 = (
+            f"지난 달 데이터 : "
+            f"{_fmt_yy_mm_dd(prev_s.strftime('%Y-%m-%d'))}"
+            f"~{_fmt_yy_mm_dd(prev_e.strftime('%Y-%m-%d'))} "
+            f"(총 {prev_cnt}개)"
+        )
+        line3 = (
+            f"전체 데이터 : "
+            f"{_fmt_yy_mm_dd(mn)}~{_fmt_yy_mm_dd(mx)} "
+            f"(총 {_fmt_k(total)}개)"
+        )
+
+        st.sidebar.text(line1 + "\n" + line2 + "\n" + line3)
+
+    except Exception as e:
+        st.sidebar.caption(f"DB 요약을 불러오지 못했습니다: {e}")
+
+    # app.py에서 받을 cfg
+    return {
+        "db_path": db_path
+    }
+
