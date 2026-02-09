@@ -1,23 +1,14 @@
 import json
-import sqlite3
 import pandas as pd
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 import plotly.express as px
-from datetime import date, datetime
+from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import streamlit as st
 
-from src.dashboard.util import keyword_count, target_keyword_ratio, top_n_keywords_extract, parse_keywords
+from src.dashboard.util import keyword_count, target_keyword_ratio, top_n_keywords_extract, parse_keywords, fetch_month_df, set_korean_font
 
 
 # --- 유틸 ---
-# 한글 폰트 설정
-def set_korean_font():
-    mpl.rcParams["font.family"] = "NanumGothic"
-    # 마이너스 기호 깨짐 방지
-    mpl.rcParams["axes.unicode_minus"] = False
-
 # 전역 css
 def inject_css():
     st.markdown(
@@ -138,39 +129,6 @@ def class_mini_card(label, count, ratio, delta_p, delta_is_good: bool):
         """,
         unsafe_allow_html=True,
     )
-
-# 특정 월 데이터 추출
-def fetch_month_df(db_path: str, table: str, yyyymm: str) -> pd.DataFrame:
-    year, month = map(int, yyyymm.split("-"))
-
-    start_date = date(year, month, 1)
-    end_date = start_date + relativedelta(months=1)
-
-    conn = sqlite3.connect(db_path)
-
-    if table == 'data':
-        query = f"""
-            SELECT *
-            FROM {table}
-            WHERE at >= ? AND at < ?
-        """
-        params = (start_date.isoformat(), end_date.isoformat())
-    elif table == "summary":
-        query = f"""
-            SELECT *
-            FROM {table}
-            WHERE month = ?
-        """
-        params = (yyyymm,)
-
-    df = pd.read_sql(
-        query,
-        conn,
-        params=params
-    )
-
-    conn.close()
-    return df
 
 # TopN 키워드 막대그래프 시각화
 def render_top_keywords_bar_plotly(df, title: str, top_n=5):
@@ -323,7 +281,6 @@ def _as_id_list(x):
             except Exception:
                 pass
     return [x]
-
 
 # summary
 def render_summary_section(title: str, summary_obj):
