@@ -115,3 +115,25 @@ def _fetch_month_df(conn, start_dt: datetime, end_dt: datetime) -> pd.DataFrame:
 def _label_name(x: int) -> str:
     # 네 파이프라인 기준: 0=없음, 1=불만, 2=확정
     return {0: "없음", 1: "불만", 2: "확정"}.get(int(x), str(x))
+
+def _topn_keywords_by_class(df: pd.DataFrame, top_n: int = 10) -> pd.DataFrame:
+    tmp = df.copy()
+    tmp["class_name"] = tmp["churn_intent_label"].fillna(-1).astype(int).map(_label_name)
+    tmp["kw_list"] = tmp["keywords"].apply(parse_keywords)
+
+    # explode 후 집계
+    tmp = tmp.explode("kw_list")
+    tmp = tmp[tmp["kw_list"].notna() & (tmp["kw_list"].astype(str).str.strip() != "")]
+
+    out = (
+        tmp.groupby(["class_name", "kw_list"])
+        .size()
+        .reset_index(name="cnt")
+        .sort_values("cnt", ascending=False)
+    )
+
+    # 클래스별 topN
+    out = out.groupby("class_name", as_index=False, group_keys=False).head(top_n)
+    out = out.rename(columns={"kw_list": "keyword"})
+    return out
+
