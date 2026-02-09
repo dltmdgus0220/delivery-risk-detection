@@ -225,3 +225,66 @@ def render_top_keywords_bar_plotly(df, title: str, top_n=5):
         return top_keywords, selected['selection']['points'][0]['y']  # 클릭한 키워드
 
     return top_keywords, None
+
+# 타겟 키워드의 클래스별 비중 비교 시각화
+def render_keyword_ratio_compare_bar(
+    target: str,
+    df_cur_confirmed: pd.DataFrame,
+    df_cur_complaint: pd.DataFrame,
+    df_prev_confirmed: pd.DataFrame,
+    df_prev_complaint: pd.DataFrame,
+    cur_label: str = "기준달",
+    prev_label: str = "전월",
+):
+    cur_conf_c = keyword_count(df_cur_confirmed)
+    cur_comp_c = keyword_count(df_cur_complaint)
+    prev_conf_c = keyword_count(df_prev_confirmed)
+    prev_comp_c = keyword_count(df_prev_complaint)
+
+    cur_conf_cnt, cur_conf_ratio = target_keyword_ratio(cur_conf_c, target)
+    cur_comp_cnt, cur_comp_ratio = target_keyword_ratio(cur_comp_c, target)
+    prev_conf_cnt, prev_conf_ratio = target_keyword_ratio(prev_conf_c, target)
+    prev_comp_cnt, prev_comp_ratio = target_keyword_ratio(prev_comp_c, target)
+
+    rows = [
+        {"month": cur_label,  "class": "확정", "ratio": cur_conf_ratio, "count": cur_conf_cnt},
+        {"month": cur_label,  "class": "불만", "ratio": cur_comp_ratio, "count": cur_comp_cnt},
+        {"month": prev_label, "class": "확정", "ratio": prev_conf_ratio, "count": prev_conf_cnt},
+        {"month": prev_label, "class": "불만", "ratio": prev_comp_ratio, "count": prev_comp_cnt},
+    ]
+    plot_df = pd.DataFrame(rows)
+    plot_df["label"] = plot_df.apply(lambda r: f"{r['ratio']:.2f}%<br>({r['count']}건)", axis=1)
+
+    max_y = float(plot_df["ratio"].max() if len(plot_df) else 0)
+    y_pad = max(1.0, max_y * 0.20) # 위 텍스트 공간
+
+    fig = px.bar(
+        plot_df,
+        x="class",
+        y="ratio",
+        color="month",
+        barmode="group",
+        text="label",
+    )
+
+    fig.update_layout(
+        height=380, # 왼쪽과 높이 맞춰서 “한 덩어리”로 보이게
+        margin=dict(l=10, r=10, t=10, b=10),
+        legend_title_text="",
+    )
+
+    fig.update_yaxes(
+        title="비율(%)",
+        range=[0, max_y + y_pad], # 위 여유
+        fixedrange=True,
+        showgrid=False,
+    )
+    fig.update_xaxes(title=None, fixedrange=True)
+
+    fig.update_traces(
+        textposition="outside",
+        cliponaxis=False,
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
