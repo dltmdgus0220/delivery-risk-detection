@@ -137,3 +137,33 @@ def _topn_keywords_by_class(df: pd.DataFrame, top_n: int = 10) -> pd.DataFrame:
     out = out.rename(columns={"kw_list": "keyword"})
     return out
 
+
+# --- 대시보드 ---
+
+def render_sidebar(today):
+    st.sidebar.subheader("🔄 데이터 관리")
+
+    db_path = st.sidebar.text_input(
+        "DB 경로",
+        value="demo.db"
+    )
+
+    # ---- 데이터 갱신 버튼 ----
+    if st.sidebar.button("데이터 갱신", use_container_width=True):
+        status = st.sidebar.empty()
+        status.info("파이프라인 실행 중...")
+
+        try:
+            conn = sqlite3.connect(db_path)
+            flag = asyncio.run(run_pipeline(conn, today))
+            conn.close()
+            status.empty()
+
+            if flag == 0:
+                st.sidebar.success("데이터 갱신 완료!")
+            else:
+                st.sidebar.success("이미 최신 데이터입니다.")
+
+        except Exception as e:
+            status.empty()
+            st.sidebar.error(f"실행 실패: {e}")
