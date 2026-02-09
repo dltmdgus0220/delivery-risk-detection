@@ -346,3 +346,36 @@ def render_summary_section(title: str, summary_obj):
     st.markdown("- **소비자들이 원하는 대응**")
     st.write(solutions if solutions else "요약 내용이 없습니다.")
 
+
+def render_sidebar(today: datetime):
+    with st.sidebar:    
+        st.markdown("### 📅 월 선택")
+
+        # 기준: 지난달
+        y, m = today.year, today.month - 1
+        if m == 0:
+            y -= 1
+            m = 12
+
+        # 최근 24개월 생성 (기준달부터)
+        months = []
+
+        for _ in range(24):
+            months.append(f"{y:04d}-{m:02d}")
+            m -= 1
+            if m == 0:
+                y -= 1
+                m = 12
+
+        selected_month = st.selectbox(
+            "분석 기준 월",
+            options=months,
+            index=0, # 항상 지난달이 첫 번째
+        )
+
+    return {
+        "yyyymm": selected_month,
+        "year": int(selected_month.split("-")[0]),
+        "month": int(selected_month.split("-")[1]),
+    }
+
