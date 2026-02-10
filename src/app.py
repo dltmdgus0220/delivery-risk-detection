@@ -7,7 +7,7 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from src.dashboard.page import home, overview, summary, analysis, operation
+from src.dashboard.page import home, analysis
 
 st.set_page_config(
     page_title="Dashboard",
@@ -17,10 +17,7 @@ st.set_page_config(
 TODAY = datetime.now(timezone.utc)
 PAGES = {
     "Home": home,
-    "Overview": overview,
-    "Summary": summary,
     "Analysis": analysis,
-    "Operation": operation,
 }
 
 def main():
