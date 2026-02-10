@@ -122,7 +122,7 @@ def target_keyword_ratio(counter:Counter, target:str) -> float:
         return 0.0
 
     count = counter[target]
-    return round((count / total) * 100, 2)
+    return count, round((count / total) * 100, 2)
 
 # 키워드 TopN
 def top_n_keywords_extract(counter:Counter, n:int=3, exclude:List[str]=EXCLUDE):
