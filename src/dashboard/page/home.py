@@ -297,11 +297,27 @@ def render_sidebar(today):
 
 
 def render(cfg: dict, today: datetime):
+    set_korean_font()
+    inject_card_css()
 
+    db_path = cfg["db_path"]
+    start_dt = cfg['start_dt']
+    end_dt = cfg['end_dt']
 
+    # 데이터로드
+    df_data = fetch_period_df(db_path, DATA_TABLE, start_dt, end_dt)
+    df_data['keywords'] = df_data['keywords'].map(parse_keywords)
 
+    # 월별 집계를 위한 컬럼 추가
+    df_data['month'] = df_data['at'].map(lambda x: x[:7])
 
+    # 이탈지수계산
+    risk_score = risk_score_calc(df_data)
 
+    # 클래스분리
+    df_confirmed = df_data[df_data['churn_intent_label'] == 2].copy()
+    df_complaint = df_data[df_data['churn_intent_label'] == 1].copy()
+    df_positive = df_data[df_data['churn_intent_label'] == 0].copy()
 
 
 
