@@ -12,7 +12,7 @@ from src.dashboard.util import parse_keywords
 TABLE = 'data'
 DATE_COL = 'at'
 
-# --- 유틸 ---
+# --- 1. 유틸 ---
 
 def _month_range(today:datetime, offset_months: int = 0):
     """offset_months=0 1달전, -1 2달전 (today 기준)"""
@@ -65,7 +65,7 @@ def _fmt_k(n: int) -> str:
         return f"{n/1000:.1f}k"
     return f"{n}"
 
-# --- 메인 렌더링 유틸 ---
+# 메인 렌더링 유틸
 
 def _has_data_between(conn, start_dt: datetime, end_dt: datetime) -> bool:
     cur = conn.execute(
