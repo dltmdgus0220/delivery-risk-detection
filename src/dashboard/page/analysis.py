@@ -368,3 +368,46 @@ def monthly_keyword_ratio(
 
     return pd.DataFrame(rows)
 
+# 키워드 추이 꺾은선그래프 시각화
+def render_keyword_trend_line(df_trend: pd.DataFrame, title: str, center_yyyymm: str):
+    # 가운데 기준달 표시용(세로선)
+    fig = px.line(
+        df_trend,
+        x="yyyymm",
+        y="ratio",
+        markers=True,
+        text=df_trend["ratio"].map(lambda x: f"{x:.1f}%"),
+    )
+
+    fig.update_traces(textposition="top center")
+
+    fig.update_layout(
+        title=dict(
+            text=title,
+            x=0.5,
+            xanchor="center",
+            font=dict(
+                size=20,
+                family="Arial",
+                color="black",
+            ),
+        ),
+        height=450,
+        margin=dict(l=10, r=30, t=50, b=10),
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        showlegend=False,
+    )
+
+    fig.update_xaxes(title=None, showgrid=False)
+    fig.update_yaxes(title="비중(%)", showgrid=False, zeroline=False)
+
+    # 기준달(중앙) vertical line
+    fig.add_vline(
+        x=center_yyyymm,
+        line_width=2,
+        line_dash="dash",
+        line_color="rgba(37,99,235,0.6)",
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
