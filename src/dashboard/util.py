@@ -75,6 +75,39 @@ def fetch_month_df(db_path: str, table: str, yyyymm: str) -> pd.DataFrame:
 
     conn.close()
     return df
+
+# 특정 월 데이터 삭제
+def delete_month_df(db_path: str, table: str, yyyymm: str):
+    year, month = map(int, yyyymm.split("-"))
+
+    start_date = date(year, month, 1)
+    end_date = start_date + relativedelta(months=1)
+
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+
+    if table == "data":
+        query = f"""
+            DELETE FROM {table}
+            WHERE at >= ? AND at < ?
+        """
+        params = (start_date.isoformat(), end_date.isoformat())
+
+    elif table == "summary":
+        query = f"""
+            DELETE FROM {table}
+            WHERE month = ?
+        """
+        params = (yyyymm,)
+
+    else:
+        conn.close()
+        raise ValueError(f"지원하지 않는 테이블: {table}")
+
+    cur.execute(query, params)
+    conn.commit()
+    conn.close()
+
 # 키워드 카운팅
 def keyword_count(df:pd.DataFrame) -> Counter:
     all_reviews = [k for ks in df[KEYWORD_COL] for k in ks]
