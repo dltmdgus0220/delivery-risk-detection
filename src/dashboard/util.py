@@ -161,12 +161,12 @@ def target_keyword_ratio(counter:Counter, target:str) -> float:
     return count, round((count / total) * 100, 2)
 
 # 키워드 TopN
-def top_n_keywords_extract(counter:Counter, n:int=3, exclude:List[str]=EXCLUDE):
+def top_n_keywords_extract(counter:Counter, n:int=3, exclude:List[str]=EXCLUDE) -> List[str]:
     topn = [(k, v) for k, v in counter.most_common() if k not in exclude][:n]
     return topn
 
 # 새로 등장한 키워드 / 급증한 키워드
-def detect_keyword_changes(counter_prev:Counter, counter_cur:Counter, threshold:float=0.1, min_cur_count:int=5) -> Tuple[List[dict], List[dict]]:
+def detect_keyword_changes(counter_prev:Counter, counter_cur:Counter, threshold:float=0.3, min_cur_count:int=5) -> Tuple[List[dict], List[dict]]:
     prev_keyword = set(counter_prev.keys())
     cur_keyword = set(counter_cur.keys())
 
@@ -212,7 +212,7 @@ def detect_keyword_changes(counter_prev:Counter, counter_cur:Counter, threshold:
             })
 
     # 비중 기준 정렬
-    new.sort(key=lambda x: x["ratio"], reverse=True)
+    new.sort(key=lambda x: x["cur_ratio"], reverse=True)
     # 증가폭 기준 정렬
     surged.sort(key=lambda x: x["diff_pp"], reverse=True)
     return new, surged
