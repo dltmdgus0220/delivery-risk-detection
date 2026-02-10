@@ -554,3 +554,24 @@ def render_cooccur_card(target_kw, cls, co_list, base_n):
         )
 
     st.markdown("</div>", unsafe_allow_html=True)
+
+# 동시발생 키워드 섹션 렌더링
+def render_cooccur_panel(df_cur: pd.DataFrame, co_cls: str, co_target_kw: str):
+    # 선택 안 했을 때: 카드 형태로 안내도 통일
+    if not co_target_kw or co_target_kw == "(선택)":
+        card_container("🤝 동시발생 키워드", "사이드바에서 기준 키워드를 선택하세요.")
+        st.markdown(
+            "<div style='padding:12px;color:#64748b;'>표시할 결과가 없습니다.</div></div>",
+            unsafe_allow_html=True,
+        )
+        return
+
+    df_cls = filter_df_by_class(df_cur, co_cls)
+    co_list, base_n = cooccur_top(df_cls, target_kw=co_target_kw, top_k=10)
+
+    render_cooccur_card(
+        target_kw=co_target_kw,
+        cls=co_cls,
+        co_list=co_list,
+        base_n=base_n,
+    )
