@@ -296,6 +296,8 @@ def render_sidebar(today):
     }
 
 
+# --- 3. 메인 ---
+
 def render(cfg: dict, today: datetime):
     set_korean_font()
     inject_card_css()
