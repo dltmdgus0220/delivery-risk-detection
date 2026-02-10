@@ -575,3 +575,55 @@ def render_cooccur_panel(df_cur: pd.DataFrame, co_cls: str, co_target_kw: str):
         co_list=co_list,
         base_n=base_n,
     )
+
+# 리뷰 드릴다운
+def render_drilldown_panel(df_cur: pd.DataFrame, dd_cls: str, dd_target_kw: str, limit: int = 50):
+    # 카드 헤더 통일
+    subtitle = f"{dd_cls} · 키워드: {dd_target_kw if dd_target_kw and dd_target_kw != '(선택)' else '미선택'}"
+    card_container("🔍 드릴다운", subtitle)
+    st.markdown("")
+
+    if not dd_target_kw or dd_target_kw == "(선택)":
+        st.markdown(
+            "<div style='padding:12px;color:#64748b;'>사이드바에서 키워드를 선택하면 리뷰 리스트를 표시합니다.</div></div>",
+            unsafe_allow_html=True,
+        )
+        return
+
+    df_cls = filter_df_by_class(df_cur, dd_cls)
+
+    if df_cls.empty:
+        st.markdown(
+            "<div style='padding:12px;color:#64748b;'>해당 클래스 데이터가 없습니다.</div></div>",
+            unsafe_allow_html=True,
+        )
+        return
+
+    # keywords는 list[str]이라고 가정
+    mask = df_cls["keywords"].apply(lambda ks: dd_target_kw in ks)
+    df_hit = df_cls[mask].copy()
+
+    if df_hit.empty:
+        st.markdown(
+            "<div style='padding:12px;color:#64748b;'>선택한 키워드가 포함된 리뷰가 없습니다.</div></div>",
+            unsafe_allow_html=True,
+        )
+        return
+
+    # 시간/텍스트 컬럼
+    time_col = "at"
+    text_col = "content"
+
+    # at 정렬 + 표시용 포맷
+    if time_col:
+        df_hit[time_col] = pd.to_datetime(df_hit[time_col], errors="coerce")
+        df_hit = df_hit.sort_values(time_col, ascending=False)
+        df_hit["작성시간"] = df_hit[time_col].dt.strftime("%Y-%m-%d %H:%M")
+    else:
+        df_hit["작성시간"] = ""
+
+    out = df_hit[["작성시간", text_col]].rename(columns={text_col: "리뷰"}).head(limit)
+
+    st.dataframe(out, use_container_width=True, hide_index=True)
+    st.markdown("</div>", unsafe_allow_html=True)  # card_container 닫기
+
