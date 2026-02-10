@@ -796,3 +796,42 @@ def render_cooccur_sidebar(df_cur: pd.DataFrame):
         "co_cls": co_cls,
         "co_target_kw": co_target_kw,
     }
+
+# 드릴다운 사이드바 렌더링
+def render_drilldown_sidebar(df_cur: pd.DataFrame):
+    with st.sidebar:
+        st.markdown("---")
+        st.markdown("### 🔍 드릴다운 설정")
+
+        dd_cls = st.radio(
+            "대상 클래스",
+            ["확정", "불만", "확정+불만"],
+            horizontal=True,
+            key="dd_cls",
+        )
+
+        df_cls = filter_df_by_class(df_cur, dd_cls)
+        suggest_list, _ = top_keywords_for_suggest(df_cls, top_k=20)
+
+        dd_target_kw = st.selectbox(
+            "키워드 검색 (Top20 추천)",
+            options=suggest_list,
+            index=0,
+            key="dd_target_kw",
+        )
+
+        dd_limit = st.slider(
+            "표시 개수",
+            min_value=10,
+            max_value=200,
+            value=50,
+            step=10,
+            key="dd_limit",
+        )
+
+    return {
+        "dd_cls": dd_cls,
+        "dd_target_kw": dd_target_kw,
+        "dd_limit": dd_limit,
+    }
+
