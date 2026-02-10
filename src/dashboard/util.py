@@ -1,7 +1,7 @@
 import ast
 import sqlite3
 import matplotlib as mpl
-from datetime import date
+from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
 import pandas as pd
 from collections import Counter
@@ -42,6 +42,42 @@ def parse_keywords(x):
 
     # fallback: 콤마 분리
     return [k.strip() for k in s.split(",") if k.strip()]
+
+# 특정 기간 데이터 조회
+def fetch_period_df(db_path: str, table: str, start_dt: date, end_dt: date) -> pd.DataFrame:
+    end_excl = end_dt + timedelta(days=1)
+
+    conn = sqlite3.connect(db_path)
+
+    try:
+        if table == "data":
+            query = f"""
+                SELECT *
+                FROM data
+                WHERE at >= ? AND at < ?
+            """
+            params = (start_dt.isoformat(), end_excl.isoformat())
+        elif table == "summary":
+            # 기간내 포함되는 모든 달
+            months = pd.period_range(start_dt, end_dt, freq="M").strftime("%Y-%m").tolist()
+            placeholders = ",".join(["?"] * len(months))
+            query = f"""
+                SELECT *
+                FROM {table}
+                WHERE month IN ({placeholders})
+            """
+            params = tuple(months)
+
+        df = pd.read_sql(
+            query,
+            conn,
+            params=params
+        )
+
+        conn.close()
+        return df
+    finally:
+        conn.close()
 
 # 특정 월 데이터 조회
 def fetch_month_df(db_path: str, table: str, yyyymm: str) -> pd.DataFrame:
