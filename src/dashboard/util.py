@@ -16,6 +16,33 @@ def set_korean_font():
     mpl.rcParams["font.family"] = "NanumGothic"
     # 마이너스 기호 깨짐 방지
     mpl.rcParams["axes.unicode_minus"] = False
+
+# db에 저장된 키워드 변환 : str->list
+def parse_keywords(x):
+    """
+    DB에 저장된 keywords(str)를 list로 변환
+    - "['a','b']" 형태 -> ['a','b']
+    - "a, b" 형태 -> ['a','b']
+    - None/빈값 -> []
+    """
+    if x is None:
+        return []
+    s = str(x).strip()
+    if s == "" or s.lower() == "nan":
+        return []
+
+    # 리스트 문자열 형태 시도
+    if s.startswith("[") and s.endswith("]"):
+        try:
+            out = ast.literal_eval(s)
+            if isinstance(out, list):
+                return [str(k).strip() for k in out if str(k).strip()]
+        except Exception:
+            pass
+
+    # fallback: 콤마 분리
+    return [k.strip() for k in s.split(",") if k.strip()]
+
 # 키워드 카운팅
 def keyword_count(df:pd.DataFrame) -> Counter:
     all_reviews = [k for ks in df[KEYWORD_COL] for k in ks]
