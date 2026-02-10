@@ -61,6 +61,74 @@ def _minmax_and_total(conn):
     cur.close()
     return mn, mx, int(total)
 
+# 카드 css
+def inject_card_css():
+    st.markdown("""
+    <style>
+      .card {
+        border: 1px solid rgba(0,0,0,0.08);
+        border-radius: 14px;
+        padding: 14px 14px;
+        background: rgba(255,255,255,0.9);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        transition: transform .12s ease, box-shadow .12s ease;
+      }
+      .card:hover{
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+      }
+      .kpi-label{
+        font-size: 0.85rem;
+        color: rgba(0,0,0,0.55);
+        display:flex;
+        align-items:center;
+        gap:8px;
+        margin-bottom: 4px;
+      }
+      .kpi-value{
+        font-size: 2.1rem;
+        font-weight: 750;
+        letter-spacing: -0.02em;
+        line-height: 1.1;
+      }
+      .kpi-sub{
+        margin-top: 6px;
+        font-size: 0.82rem;
+        color: rgba(0,0,0,0.45);
+      }
+      .class-title{
+        font-size: 0.95rem;
+        font-weight: 700;
+        margin-bottom: 6px;
+      }
+      .class-count{
+        font-size: 1.8rem;
+        font-weight: 800;
+        line-height: 1.1;
+        margin-bottom: 8px;
+      }
+      .badge{
+        display:inline-block;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 0.82rem;
+        font-weight: 650;
+        border: 1px solid rgba(0,0,0,0.08);
+        background: rgba(0,0,0,0.03);
+      }
+      .row{
+        display:flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+      }
+      .leftbar{
+        border-left: 6px solid var(--barcolor);
+        padding-left: 12px;
+      }
+    </style>
+    """, unsafe_allow_html=True)
+
 
         f"""
         """,
