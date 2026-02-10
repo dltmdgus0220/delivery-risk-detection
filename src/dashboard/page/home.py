@@ -157,13 +157,44 @@ def class_card(class_name: str, count: int, ratio: float, bar_color: str = "#3B8
         unsafe_allow_html=True
     )
 
+# 월별 추이 꺾은선 그래프 시각화
+def plot_monthly_line(df_m: pd.DataFrame, y_col: str, y_title: str, tick_count: int = 8):
     """
+    df_m 컬럼: month(YYYY-MM), count, risk_score
     """
-
+    base = alt.Chart(df_m).encode(
+        x=alt.X(
+            "month:N",
+            title="월",
+            axis=alt.Axis(labelAngle=0, tickCount=tick_count)  # ✅ xtick 개수 제어
+        )
     )
+
+    line = base.mark_line().encode(
+        y=alt.Y(f"{y_col}:Q", title=y_title),
     )
 
+    points = base.mark_point(filled=True, size=40).encode(
+        y=alt.Y(f"{y_col}:Q", title=y_title),
+        tooltip=[
+            alt.Tooltip("month:N", title="월"),
+            alt.Tooltip(f"{y_col}:Q", title=y_title),
+        ],
+    )
 
+    # ✅ hover 시 세로 룰 + 값 표시 (인터랙티브 감성)
+    hover = alt.selection_point(fields=["month"], nearest=True, on="mouseover", empty=False)
+
+    rule = base.mark_rule(opacity=0.2).encode(
+        opacity=alt.condition(hover, alt.value(1), alt.value(0)),
+        tooltip=[
+            alt.Tooltip("month:N", title="월"),
+            alt.Tooltip(f"{y_col}:Q", title=y_title),
+        ],
+    ).add_params(hover)
+
+    chart = (line + points + rule).properties(height=260).interactive()  # ✅ 줌/팬 유지
+    return chart
 
 
 def render_sidebar(today):
