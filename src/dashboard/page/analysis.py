@@ -664,3 +664,52 @@ def _as_id_list(x):
             except Exception:
                 pass
     return [x]
+
+# summary
+def _extract_text_list(summary_dict: dict, key: str) -> list[str]:
+    """
+    summary_dict[key]가
+    - [{"text": "...", "importance": n}, ...] 형태면 text만 추출
+    - ["...","..."] 형태면 그대로 문자열만
+    """
+    if not summary_dict:
+        return []
+    items = summary_dict.get(key, [])
+    out = []
+    if isinstance(items, list):
+        for it in items:
+            if isinstance(it, dict):
+                t = str(it.get("text", "")).strip()
+                if t:
+                    out.append(t)
+            else:
+                t = str(it).strip()
+                if t:
+                    out.append(t)
+    return out
+
+def render_summary_section(title: str, obj):
+    data = _as_dict(obj)
+    st.markdown(f"##### {title}")
+
+    if not data:
+        st.caption("요약 데이터가 없습니다.")
+        return
+
+    # 섹션별 텍스트만 뽑아서 출력
+    sections = [
+        ("문제 상황", "situations"),
+        ("기존 대응에 대한 평가", "evaluations"),
+        ("소비자들이 원하는 대응", "solutions"),
+    ]
+
+    for head, k in sections:
+        texts = _extract_text_list(data, k)
+        with st.container(border=True):
+            st.markdown(f"**{head}**")
+            if not texts:
+                st.caption("내용이 없습니다.")
+            else:
+                for t in texts:
+                    st.write(f"- {t}")
+
