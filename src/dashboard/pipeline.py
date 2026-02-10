@@ -6,19 +6,17 @@ from src.classification.classifier import infer_pipeline
 from src.keyword.llm_keyword_async import extract_keywords
 from src.risk_summary.risk_score_calc import risk_score_calc
 from src.risk_summary.llm_summary_reviews import summary_pipeline
+from src.dashboard.util import fetch_month_df, delete_month_df
 from datetime import datetime, timedelta
 import asyncio
 import argparse
 
 
 # --- 1. 상수 선언 및 기타 함수 ---
+DB_PATH = "demo.db"
 APP_ID = "com.sampleapp"
 DATE_COL = "at"
 TODAY = datetime(2026, 2, 1)
-
-# 날짜 포멧
-def _to_iso_date(dt: datetime) -> str:
-    return dt.strftime("%Y-%m-%d")
 
 # 안전하게 리스트를 문자열로 변환
 def safe_json_dumps(x):
@@ -27,25 +25,6 @@ def safe_json_dumps(x):
     if isinstance(x, str): # 이미 문자열이면 그대로
         return x
     return json.dumps([], ensure_ascii=False) # 나머지는 빈 리스트로  
-
-# 특정 기간 데이터 db에서 가져오기
-def fetch_rows_between(conn, table, start_dt: datetime, end_dt: datetime) -> pd.DataFrame:
-    start_s = _to_iso_date(start_dt)
-    end_s = _to_iso_date(end_dt)
-
-    cursor = conn.execute(
-        f"""
-        SELECT *
-        FROM {table}
-        WHERE date({DATE_COL}) BETWEEN date(?) AND date(?)
-        """,
-        (start_s, end_s),
-    ) # (?) 자리에 각각 start_s, end_s 들어감
-    cols = [d[0] for d in cursor.description] # cursor.description: ('컬럼명', 값들...) 이런 식으로 주는데 d[0]으로 컬럼명만 추출
-    rows = cursor.fetchall()
-    cursor.close()
-
-    return pd.DataFrame(rows, columns=cols)
 
 # SQLiteDB 적재
 def save_db(df:pd.DataFrame, conn, table:str, if_exists:str="append", chunksize:int=5000):
@@ -68,7 +47,10 @@ def save_db(df:pd.DataFrame, conn, table:str, if_exists:str="append", chunksize:
     col_info = cur.fetchall()
     columns = [c[1] for c in col_info]
 
-    cur.execute(f"SELECT * FROM {table} LIMIT 5")
+    if table == "data":
+        cur.execute(f"SELECT * FROM {table} LIMIT 5")
+    elif table == "summary":
+        cur.execute(f"SELECT * FROM {table} ORDER BY month DESC LIMIT 5")
     sample_rows = cur.fetchall()
 
     sample_df = pd.DataFrame(sample_rows, columns=columns)
@@ -89,56 +71,63 @@ async def run_pipeline(conn, today, data_table:str="data", summary_table:str="su
     # 날짜 계산
     # start_date = today.replace(day=1) # 이번 달 1일로 변경
     # end_date = (today.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1) # 이번 달 말일
-    end_date = (today - timedelta(days=1)) # 지난 달 말일
+    end_date = (today.replace(day=1) - timedelta(days=1)) # 지난 달 말일
     start_date = end_date.replace(day=1) # 지난 달 1일
+    yyyymm = start_date.strftime("%Y-%m")
 
-    prev_end_date = (start_date - timedelta(days=1)) # 2달 전 말일
-    prev_start_date = prev_end_date.replace(day=1) # 2달 전 1일
-
-    # 지난 달 데이터 수집(비교군)
-    df_prev = fetch_rows_between(conn, prev_start_date, prev_end_date)
     # 이번 달 데이터 있는지 확인
-    df_tmp = fetch_rows_between(conn, data_table, start_date, end_date)
+    # df_tmp = fetch_month_df(DB_PATH, data_table, yyyymm)
     df_cur = collect_reviews_by_date(APP_ID, start_date, end_date)
+    
     # 이번 달 데이터 추가 수집 -> DB 적재
-    if len(df_tmp) != len(df_cur):
-        print(f"{len(df_cur)}개 수집 완료. ({start_date.strftime('%Y-%m-%d')}~{end_date.strftime('%Y-%m-%d')})")
-        
-        # 이탈의도분류
-        df_cur = infer_pipeline(df_cur, "model_out/bert-kor-base", text_col="content", batch=16)
-        df_cur0 = df_cur[df_cur['churn_intent_label'] == 0].copy()
-        df_cur1 = df_cur[df_cur['churn_intent_label'] == 1].copy()
-        df_cur2 = df_cur[df_cur['churn_intent_label'] == 2].copy()
-        print(f"{len(df_cur)}개 이탈의도 분류 완료. (확정:{len(df_cur2)}개/불만:{len(df_cur1)}개/없음:{len(df_cur0)}개)")
-        
-        # 키워드도출
-        df_cur = await extract_keywords(df_cur, text_col="content", batch=100)
-        print(f"{len(df_cur)}개 키워드 도출 완료.")
-        # 키워드 변환
-        df_cur["keywords"] = df_cur["keywords"].map(safe_json_dumps)
+    # if len(df_tmp) != len(df_cur): # 중복 처리 조건 변경필요
+    # 재현성을 위해 삭제하고 다시 수집
+    delete_month_df(DB_PATH, data_table, yyyymm)
+    delete_month_df(DB_PATH, summary_table, yyyymm)
+    print(f"{len(df_cur)}개 수집 완료. ({start_date.strftime('%Y-%m-%d')}~{end_date.strftime('%Y-%m-%d')})")
+    
+    # 이탈의도분류
+    df_cur = infer_pipeline(df_cur, "model_out/bert-kor-base", text_col="content", batch=16)
+    df_cur0 = df_cur[df_cur['churn_intent_label'] == 0].copy()
+    df_cur1 = df_cur[df_cur['churn_intent_label'] == 1].copy()
+    df_cur2 = df_cur[df_cur['churn_intent_label'] == 2].copy()
+    print(f"{len(df_cur)}개 이탈의도 분류 완료. (확정:{len(df_cur2)}개/불만:{len(df_cur1)}개/없음:{len(df_cur0)}개)")
+    
+    # 키워드도출
+    df_cur = await extract_keywords(df_cur, text_col="content", batch=100)
+    print(f"{len(df_cur)}개 키워드 도출 완료.")
+    # 키워드 변환
+    df_cur["keywords"] = df_cur["keywords"].map(safe_json_dumps)
+    # df_cur.to_csv('out_test1.csv', encoding='utf-8-sig')
 
-        # 데이터 DB 적재
-        save_db(df_cur, conn, data_table, if_exists, chunksize)
+    # 데이터 DB 적재
+    save_db(df_cur, conn, data_table, if_exists, chunksize)
 
-        # 이탈지수계산
-        risk_score = risk_score_calc(df_cur)
-        print("이탈 지수 계산 완료")
-        # '확정' 키워드 기반 리뷰 요약
-        summary = summary_pipeline(df_cur)
-        print("요약 카드 생성 완료")
+    # 이탈지수계산
+    risk_score = risk_score_calc(df_cur)
+    print("이탈 지수 계산 완료")
+    # '확정' 키워드 기반 리뷰 요약
+    summary_complaint, summary_confirmed = summary_pipeline(df_cur)
+    print("요약 카드 생성 완료")
 
-        df_summary = pd.DataFrame([{
-            "month": start_date.strftime('%Y-%m'),
-            "risk_score": risk_score,
-            "summary": summary,
-            "solution": "대안없음"
-            }])
+    df_summary = pd.DataFrame([{
+        "month": start_date.strftime('%Y-%m'),
+        "risk_score": risk_score,
+        "summary_complaint": summary_complaint,
+        "summary_confirmed": summary_confirmed,
+        "solution": "대안없음"
+        }])
 
-        # 요약 DB 적재
-        save_db(df_summary, conn, summary_table, if_exists, chunksize)
+    for col in ["summary_complaint", "summary_confirmed"]:
+        df_summary[col] = df_summary[col].apply(lambda x: json.dumps(x, ensure_ascii=False) if isinstance(x, dict) else x)
 
-    else:
-        print("이미 최신 데이터 입니다.")
+    # 요약 DB 적재
+    save_db(df_summary, conn, summary_table, if_exists, chunksize)
+    return 0
+
+    # else:
+    #     print("이미 최신 데이터 입니다.")
+    #     return 1
 
 
 async def main():
