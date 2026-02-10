@@ -93,3 +93,77 @@ def inject_css():
         unsafe_allow_html=True,
     )
 
+# 3행 키워드 카드 css
+def inject_keyword_list_css():
+    st.markdown(
+        """
+        <style>
+          .kw-card{
+            border:1px solid #e5e7eb;
+            border-radius:12px;
+            background:#ffffff;
+            box-shadow:0 1px 2px rgba(0,0,0,.04);
+            overflow:hidden;
+          }
+          .kw-card-header{
+            padding:12px 14px;
+            font-weight:800;
+            color:#111827;
+            font-size:14px;
+            background:#ffffff;
+            border-bottom:1px solid #eef2f7;
+          }
+          .kw-row{
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            padding:10px 14px;
+            min-height:44px;
+            border-bottom:1px solid #eef2f7;
+          }
+          .kw-row:last-child{ border-bottom:none; }
+          .kw-left{
+            font-weight:700;
+            color:#0f172a;
+            font-size:14px;
+            max-width:58%;
+            overflow:hidden;
+            text-overflow:ellipsis;
+            white-space:nowrap;
+          }
+          .kw-right{
+            display:flex;
+            align-items:center;
+            gap:10px;
+            color:#475569;
+            font-size:13px;
+            white-space:nowrap;
+          }
+          .kw-pill{
+            min-width:64px;
+            height:22px;
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            border-radius:999px;
+            font-weight:800;
+            font-size:12px;
+          }
+          .kw-pill-empty{
+            background:transparent;
+            color:transparent;
+            border:1px solid transparent;
+          }
+          .kw-pill-new{
+            background:#e0f2fe;
+            color:#0369a1;
+          }
+          .kw-pill-surge{
+            background:#fee2e2;
+            color:#dc2626;
+          }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
