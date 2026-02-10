@@ -476,3 +476,41 @@ def top_keywords_for_suggest(df_cls: pd.DataFrame, top_k: int = 20):
     top = top_n_keywords_extract(c, n=top_k)
     return [k for k, _ in top], c
 
+# 동시발생 키워드 조회
+def cooccur_top(
+    df_cls: pd.DataFrame,
+    target_kw: str,
+    top_k: int = 10,
+):
+    """
+    target_kw와 같은 리뷰에서 같이 등장한 키워드 TopK 반환.
+    반환: list[dict] = [{"keyword":..., "count":..., "ratio":...}]
+    ratio는 (target_kw 포함 리뷰 중 해당 키워드 동시발생 비율) 기준
+    """
+    if df_cls.empty:
+        return []
+
+    # target 포함 리뷰만
+    mask = df_cls["keywords"].apply(lambda ks: target_kw in ks)
+    df_t = df_cls[mask].copy()
+    base = len(df_t)
+    if base == 0:
+        return []
+
+    co = Counter()
+    for ks in df_t["keywords"]:
+        # 같은 리뷰에서 target 제외하고 카운트
+        for k in ks:
+            if k != target_kw:
+                co[k] += 1
+
+    # TopK
+    top = co.most_common(top_k)
+
+    out = []
+    for k, cnt in top:
+        ratio = round(cnt / base * 100, 1)  # 기준: target 포함 리뷰 중 비율
+        out.append({"keyword": k, "count": cnt, "ratio": ratio})
+
+    return out, base
+
