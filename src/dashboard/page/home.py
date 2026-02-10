@@ -197,6 +197,8 @@ def plot_monthly_line(df_m: pd.DataFrame, y_col: str, y_title: str, tick_count: 
     return chart
 
 
+# --- 2. 사이드바 ---
+
 def render_sidebar(today):
     st.sidebar.subheader("🔄 데이터 관리")
 
@@ -204,7 +206,9 @@ def render_sidebar(today):
         "DB 경로",
         value="demo.db"
     )
+    st.session_state['db_path'] = db_path
 
+     # 데이터 갱신 버튼
     if st.sidebar.button("데이터 갱신", use_container_width=True):
         status = st.sidebar.empty()
         status.info("파이프라인 실행 중...")
@@ -224,6 +228,29 @@ def render_sidebar(today):
             status.empty()
             st.sidebar.error(f"실행 실패: {e}")
 
+    # 기간 선택
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 📌 오버뷰 필터")
+    try:
+        conn = sqlite3.connect(db_path)
+        mn, mx, total = _minmax_and_total(conn)
+    finally:
+        conn.close()
+
+    mn, mx = _to_date(mn), _to_date(mx)
+
+    st.session_state.setdefault("start_dt", mn)
+    st.session_state.setdefault("end_dt", mx)
+
+    start_dt = st.sidebar.date_input("기간 시작", value=st.session_state["start_dt"], min_value=mn, max_value=mx)
+    end_dt = st.sidebar.date_input("기간 종료", value=st.session_state["end_dt"], min_value=mn, max_value=mx)
+
+    if st.sidebar.button("적용"):
+        if start_dt > end_dt:
+            start_dt, end_dt = end_dt, start_dt
+        st.session_state["start_dt"], st.session_state["end_dt"] = start_dt, end_dt
+        st.rerun()
+
     st.sidebar.divider()
     st.sidebar.subheader("DB 요약")
 
@@ -233,6 +260,8 @@ def render_sidebar(today):
         cur_s, cur_e = _month_range(today, 0)      # 이번 달
         prev_s, prev_e = _month_range(today, -1)  # 지난 달
 
+        cur_cnt = len(fetch_period_df(db_path, DATA_TABLE, cur_s, cur_e))
+        prev_cnt = len(fetch_period_df(db_path, DATA_TABLE, prev_s, prev_e))
 
         mn, mx, total = _minmax_and_total(conn)
         conn.close()
@@ -259,7 +288,11 @@ def render_sidebar(today):
 
     except Exception as e:
         st.sidebar.caption(f"DB 요약을 불러오지 못했습니다: {e}")
+    
     return {
+        "db_path": db_path,
+        "start_dt": st.session_state["start_dt"],
+        "end_dt": st.session_state["end_dt"],
     }
 
 
