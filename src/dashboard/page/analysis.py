@@ -175,3 +175,11 @@ def get_min_max_yyyymm(db_path: str):
     conn.close()
     return df.loc[0, "min_at"][:7], df.loc[0, "max_at"][:7]
 
+# 클래스 필터링
+def filter_df_by_class(df: pd.DataFrame, cls: str) -> pd.DataFrame:
+    if cls == "확정":
+        return df[df["churn_intent_label"] == 2].copy()
+    if cls == "불만":
+        return df[df["churn_intent_label"] == 1].copy()
+    return df[df["churn_intent_label"].isin([1, 2])].copy()
+
