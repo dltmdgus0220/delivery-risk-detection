@@ -949,3 +949,26 @@ def render(cfg_base: dict, today):
                 title="'확정+불만'키워드 TopN",
                 top_n=cfg["topn_n"],
             )
+
+    with right:
+        # selected_kw가 없으면 안내
+        if not selected_kw:
+            st.info("왼쪽 TopN 막대에서 키워드를 선택하면 추이를 표시합니다.", icon="👈")
+        else:
+            min_yyyymm, max_yyyymm = get_min_max_yyyymm(db_path)
+            months_11 = build_11mo_window(cur_yyyymm, min_yyyymm=min_yyyymm, max_yyyymm=max_yyyymm)
+
+            trend_df = monthly_keyword_ratio(
+                db_path=db_path,
+                months=months_11,
+                keyword=selected_kw,
+                cls=cfg["topn_class"],
+            )
+
+            render_keyword_trend_line(
+                df_trend=trend_df,
+                title=f"'{selected_kw}' 키워드 비중 추이 ({cfg['topn_class']})",
+                center_yyyymm=cur_yyyymm,
+            )
+
+    st.markdown("---")
