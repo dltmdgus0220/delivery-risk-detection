@@ -1008,3 +1008,96 @@ def render(cfg_base: dict, today):
             limit=cfg["dd_limit"],
         )
 
+    st.markdown("---")
+    # 4행 (요약, 드릴다운)
+    bottom_left, bottom_right = st.columns([1.2, 1.5], gap="large")
+
+    # 요약
+    with bottom_left:
+        st.markdown(f"#### 🧠 '{topn[0][0]}' 중심 요약")
+
+        view_mode = st.radio(
+            "표시할 요약 선택",
+            options=["확정", "불만"],
+            horizontal=True,
+            label_visibility="collapsed",
+            key="summary_view_mode",
+        )
+
+        if df_cur_summary is None or df_cur_summary.empty:
+            st.info("요약 데이터가 없습니다.")
+        else:
+            row0 = df_cur_summary.iloc[0]
+
+            confirmed_obj = row0.get("summary_confirmed", None)
+            complaint_obj = row0.get("summary_complaint", None)
+
+            if view_mode == "확정":
+                render_summary_section("'확정' 리뷰 분석", confirmed_obj)
+            elif view_mode == "불만":
+                render_summary_section("'불만' 리뷰 분석", complaint_obj)
+
+    # 드릴다운
+    with bottom_right:
+        st.markdown(f"#### 🔍 '{topn[0][0]}' 드릴다운")
+
+        if df_cur_summary is None or df_cur_summary.empty:
+            st.info("요약 데이터가 없어 근거 리뷰를 찾을 수 없습니다.", icon="🧩")
+        else:
+            row0 = df_cur_summary.iloc[0]
+
+            # summary 객체에서 reason_id 모으기
+            reason_ids = []
+
+            if view_mode in ["확정"]:
+                conf_obj = _as_dict(row0.get("summary_confirmed", None))
+                reason_ids += _as_id_list(conf_obj.get("reason_id", None))
+
+            elif view_mode in ["불만"]:
+                comp_obj = _as_dict(row0.get("summary_complaint", None))
+                reason_ids += _as_id_list(comp_obj.get("reason_id", None))
+
+            # 중복 제거(순서 유지)
+            seen = set()
+            reason_ids = [x for x in reason_ids if not (str(x) in seen or seen.add(str(x)))]
+
+            if not reason_ids:
+                st.info("선택된 요약에 근거 리뷰 ID(reason_id)가 없습니다.", icon="🧩")
+            else:
+                # df_cur에서 id/날짜/라벨/텍스트 컬럼 자동 탐색
+                id_col = "reviewId"
+                at_col = "at"
+                label_col = "churn_intent"
+                text_col = "content"
+
+            if id_col is None:
+                st.error("df_cur에서 리뷰 id 컬럼을 찾지 못했습니다. (예: id/review_id)")
+            else:
+                # 타입 맞추기: reason_ids가 문자열일 수도 있어서 문자열 비교로 통일
+                df_tmp = df_cur.copy()
+                df_tmp["_id_str"] = df_tmp[id_col].astype(str)
+                id_set = set(str(x) for x in reason_ids)
+
+                df_drill = df_tmp[df_tmp["_id_str"].isin(id_set)].copy()
+
+                if df_drill.empty:
+                    st.warning("reason_id로 매칭되는 리뷰를 df_cur에서 찾지 못했습니다.")
+                else:
+                    # 보기용 컬럼 구성
+                    out = pd.DataFrame()
+                    out["날짜"] = df_drill[at_col].astype(str) if at_col else ""
+                    out["클래스"] = df_drill[label_col].astype(str) if label_col else ""
+                    out["리뷰"] = df_drill[text_col].astype(str) if text_col else ""
+
+                    # 날짜 컬럼이 있으면 정렬
+                    if at_col:
+                        try:
+                            df_drill["_at_dt"] = pd.to_datetime(df_drill[at_col])
+                            out = out.loc[df_drill.sort_values("_at_dt", ascending=False).index]
+                        except Exception:
+                            pass
+
+                    st.caption(f"근거 리뷰 {len(out)}건 (reason_id 기준)")
+                    st.dataframe(out, use_container_width=True, hide_index=True, height=520)
+
+    
