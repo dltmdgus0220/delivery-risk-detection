@@ -215,3 +215,4 @@ model_out*
 *.db
 data_db_init.py
 summary_db_init.py
+src/prompt_dev/*
