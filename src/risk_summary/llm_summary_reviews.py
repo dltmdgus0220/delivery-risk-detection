@@ -127,7 +127,7 @@ def build_batch_prompt(reviews: dict, keyword: str) -> str:
 - 각 항목은 반드시 {{"text":"...", "importance": n}} 형태로 작성하세요.
 - importance는 1~5 정수이며, 5가 가장 중요합니다.
 - 각 섹션에서 importance가 높은 순으로 2개만 선택하세요.
-- reason_id에는 근거 리뷰 id를 최대 20개까지 넣으세요. (Review List의 id 그대로)
+- reason_id에는 요약에 사용한 근거 리뷰 id를 최대 20개까지 넣으세요. (Review List의 id 그대로)
 
 중요도(importance) 판단 기준 (반드시 준수):
 - 5점(매우 높음): 1시간 이상 지연 또는 주문 취소/미도착, 명시적 이탈 표현(삭제/탈퇴/다신 안 씀),
