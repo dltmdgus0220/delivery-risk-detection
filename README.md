@@ -3,7 +3,7 @@
 
 ## 1. 프로젝트 개요
 
-본 프로젝트는 배달앱 리뷰 데이터 분석을 통해 고객의 이탈 위험 요인을 분석하고, 사전 예측하여 대비하기 위한 **이탈 리스크 조기 경보 시스템**입니다.
+본 프로젝트는 배달앱 리뷰 데이터 분석을 통해 고객의 이탈 위험 요인을 분석하고, 사전 예측하여 대비하기 위한 **이탈 리스크 감지 시스템**입니다.
 
 관리자가 이탈 리스크를 빠르게 인지하고, 문제 원인에 따른 즉각적인 대응이 가능하도록 지원하는 것을 목표로 합니다.
 
@@ -51,21 +51,31 @@
 ├── data/ # 원시/결과 데이터 저장 경로
 ├── model_out/ # 학습된 모델 가중치 저장 경로
 └── src/
+    ├── app.py # 대시보드
     ├── data_collect.py # 데이터수집
     ├── classification/
     |   ├── classifier.py # 이탈의도분류
     |   ├── configs.py
     |   ├── datasets.py
     |   ├── trainer.py
-    |   └── utils.py    
+    |   └── utils.py
+    ├── dashboard/
+    |   ├── pipeline.py 
+    |   ├── util.py
+    |   └── page/
+    |       ├── home.py
+    |       └── analysis.py   
     ├── keyword/
     |   ├── llm_keyword_async.py # 비동기식 키워드도출
     |   ├── llm_keyword.py # 동기식 키워드도출
     |   └── 기타파일들
-    └── labeling/
-        ├── llm_churn_intent_labeling_async.py # 비동기식 이탈의도라벨링
-        ├── llm_churn_intent_labeling.py # 동기식 이탈의도라벨링
-        └── prompt_dev/ # 프롬프트 개선을 위해 사용한 파일들
+    ├── labeling/
+    |   ├── llm_churn_intent_labeling_async.py # 비동기식 이탈의도라벨링
+    |   ├── llm_churn_intent_labeling.py # 동기식 이탈의도라벨링
+    |   └── eval_labeling.py
+    └── risk_summary/
+        ├── llm_summary_reviews.py
+        └── risk_score_calc.py
 
 
 ```
