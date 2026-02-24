@@ -33,8 +33,7 @@
     conda create -n env01 python=3.10
     conda activate env01
     ```
-    # macOS/Linux
-    ```
+
 3.  **의존성 설치:** `requirements.txt`에 명시된 라이브러리를 설치합니다.
     ```bash
     pip install -r requirements.txt
