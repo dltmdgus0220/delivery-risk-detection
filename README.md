@@ -28,7 +28,7 @@
 1.  **Python 설치:** Python 3.8 이상 버전이 설치되어 있어야 합니다.
 2.  **가상 환경 생성 및 활성화 (권장):**
     해당 프로젝트는 conda 가상환경을 사용했습니다.
-    # Windows
+    ### Windows
     ```bash
     conda create -n env01 python=3.10
     conda activate env01
@@ -38,6 +38,12 @@
     ```bash
     pip install -r requirements.txt
     ```
+
+### 5.2. 실행
+root 디렉토리에서 실행
+```bash
+streamlit run app.py
+```
 
 
 ## 6. 프로젝트 구조
